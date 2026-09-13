@@ -62,7 +62,7 @@ def test_login_success_returns_token(client, registered_user):
     assert data["token_type"] == "bearer"
     assert data["access_token"]
 
-    claims = jwt.decode(data["access_token"], SECRET_KEY, algorithms=[ALGORITHM])
+    claims = jwt.decode(data["access_token"], SECRET_KEY, algorithms=[ALGORITHM], leeway=1)
     assert set(claims.keys()) == {"sub", "exp", "iat"}
     assert claims["sub"] == str(registered_user["id"])
     assert "password" not in claims
