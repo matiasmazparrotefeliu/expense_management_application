@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from .db.config import Base, engine
 from .models import User, Account, Operation, Category
 from .api import UserRoutes, AccountRoutes, CategoryRoutes, OperationRoutes
-from .middlewares import LoadUserData
+from .auth.middleware import LoadUserData
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
