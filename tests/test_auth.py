@@ -1,7 +1,7 @@
 import jwt
 import pytest
 
-from src.core.security import ALGORITHM, SECRET_KEY
+from src.auth.security import ALGORITHM, SECRET_KEY
 
 USER_PAYLOAD = {
     "name": "matute92",
