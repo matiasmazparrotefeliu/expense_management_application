@@ -16,7 +16,7 @@ FastAPI + SQLAlchemy (MySQL) expense-tracking API. Python 3.11, deps in `require
 ## Run
 
 - Setup: `python -m venv myenv` + `myenv\Scripts\activate` (Windows) + `pip install -r requirements.txt`. The `myenv` venv is gitignored.
-- App (local): `uvicorn src.main:app --reload` — **must run from repo root**. Imports are mixed absolute (`src.models`, `src.db.config`) and relative (`..core.security`), so a `src`-relative cwd or `cd src` will break imports.
+- App (local): `uvicorn src.main:app --reload` — **must run from repo root**. Imports are mixed absolute (`src.models`, `src.db.config`) and relative (`..auth.security`), so a `src`-relative cwd or `cd src` will break imports.
 - Docker: `docker compose up --build` runs a single `fastapi` container. SQLite DB (`DB_URL=sqlite:////app/data/expense_app.db`) persists via a **bind mount** of the repo's `data/` dir (`./:/app/data`), not a named volume. Dev mode (`./:/app` + `APP_RELOAD=true` → `--reload`) comes from `docker-compose.override.yaml`, applied automatically; run prod-only with `docker compose -f docker-compose.yaml up --build`. `scripts/entrypoint.py` seeds default categories, then launches uvicorn.
 
 ## DB config
@@ -31,13 +31,16 @@ FastAPI + SQLAlchemy (MySQL) expense-tracking API. Python 3.11, deps in `require
 
 ## Auth
 
-- JWT handled by `LoadUserData` middleware (`src/middlewares/load_user_middleware.py`), not FastAPI dependencies. It decodes the `Authorization: Bearer <token>` header and sets `request.state.user` to a **dict** (`user.to_dict()`), so route/service code uses `user['id']`, not `user.id`. It also preloads the user's operations into `request.state.operations` — resolved via a join through `Account`, since `Operation` has no `user_id` column.
-- Tokens use PyJWT (`jwt`), payload is minimal: `sub` (user id) + `exp`/`iat`. `SECRET_KEY` (env `SECRET_KEY`, dev default), `ALGORITHM`, and `PasswordHash` live as module constants in `src/core/security.py`; the middleware imports them from there (single source of truth — do not hardcode elsewhere).
+- All authentication logic lives in the `src/auth/` package: `Security` class (`security.py`), `LoadUserData` middleware (`middleware.py`), and `get_current_user` dependency (`dependencies.py`).
+- The `src/auth/__init__.py` uses lazy imports (no eager re-exports) to avoid triggering DB config loading at import time. Consumers must import directly from submodules: `from ..auth.security import Security`, `from ..auth.middleware import LoadUserData`, `from ..auth.dependencies import get_current_user`.
+- JWT handled by `LoadUserData` middleware, not FastAPI dependencies. It decodes the `Authorization: Bearer <token>` header and sets `request.state.user` to a **dict** (`user.to_dict()`), so route/service code uses `user['id']`, not `user.id`. User accounts are eagerly loaded via `joinedload(User.accounts)` to prevent lazy-loading surprises.
+- Tokens use PyJWT (`jwt`), payload is minimal: `sub` (user id) + `exp`/`iat`. `SECRET_KEY` (env `SECRET_KEY`, dev default), `ALGORITHM`, and `PasswordHash` live as module constants in `src/auth/security.py` (single source of truth — do not hardcode elsewhere).
 - Passwords are hashed with **argon2** via `pwdlib` (`PasswordHash.recommended()`). Rows hashed under the old passlib/bcrypt will not verify — re-register them.
 
 ## Style / structure
 
 - Routes are registered imperatively: each route class's `__init__` calls `self.router.add_api_route(...)`; there are no decorators. New endpoints go in `src/api/*_routes.py`, logic in `src/services/*`. Current sets: `UserRoutes` (`/users`), `AccountRoutes` (`/accounts` — `GET /` lists own active accounts, `POST /new` creates a zero-balance account), `CategoryRoutes` (`/categories` — read-only catalog), `OperationRoutes` (`/operations`).
+- Protected routes use `user: dict = Depends(get_current_user)` to enforce auth via the `LoadUserData` middleware; the dependency (`src/auth/dependencies.py`) raises 401 when `request.state.user` is absent.
 - Services return `JSONResponse` directly; the `response_model` on routes is effectively bypassed. The `to_dict()` on SQLAlchemy models is the de-facto serializer.
 - Currency whitelist lives in `src/core/currencies.py`: `SUPPORTED_CURRENCIES` (env-overridable, default `USD,ARS`) plus `validate_supported_currency()`, shared by the `AccountCreate` and `CreateOperation` schemas (422 on rejection) — never re-implement the check in a service or model.
 - Service class naming is inconsistent: `User_Service` (snake case) vs `OperationService`/`AccountService`/`CategoryService` — match the existing file's convention.
@@ -63,6 +66,6 @@ FastAPI + SQLAlchemy (MySQL) expense-tracking API. Python 3.11, deps in `require
 - Tests exercise the **running Docker container** over HTTP: the `client` fixture is an `httpx.Client` pointed at `http://localhost:8000`, so `docker compose up --build` must be up first (`container_ready` fixture fails fast with that hint otherwise).
 - There is no reset endpoint, so per-test isolation comes from a direct `sqlite3` connection to the shared repo-root `expense_app.db` (the same file the container writes via its `/app/data` bind mount): `truncate_tables` runs `DELETE FROM operations/accounts/users` before every test in FK order. `categories` are **not** truncated — they are seeded once by `scripts/entrypoint.py`; the `category` fixture reuses the first active one (and only inserts a fallback if the catalog were empty).
 - Because tests truncate the shared file, a test run wipes users/accounts/operations from the dev DB (categories persist). This is expected.
-- `test_auth.py` decodes JWTs with the dev-default `SECRET_KEY`/`ALGORITHM` from `src/core/security.py` — importing that module is safe (no DB side effects); the container runs with the same default.
+- `test_auth.py` decodes JWTs with the dev-default `SECRET_KEY`/`ALGORITHM` from `src/auth/security.py` — importing that module is safe (no DB side effects); the container runs with the same default.
 - `tests/test_receipt_extraction.py` is the exception to the container rule: in-process unit tests over the pure helpers of `ReceiptTextExtractor`/`ReceiptService` (validation, prompt, JSON parsing, payload mapping) with **no DB and no provider call**, so they run without a key. The container-side receipt tests (`tests/test_receipts.py`) only cover paths that fail **before** the AI call (401/422/404/403) for the same reason.
 - Tests are NOT run by the agent (Change rules) — the user executes `python -m pytest tests -v` manually after every change.
