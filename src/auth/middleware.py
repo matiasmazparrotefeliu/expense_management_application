@@ -2,12 +2,12 @@ import jwt
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from jwt import InvalidTokenError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from ..core.security import ALGORITHM, SECRET_KEY
+from .security import ALGORITHM, SECRET_KEY
 from ..db.config import SessionLocal
-from ..models import Account, Operation, User
+from ..models import User
 
 class LoadUserData(BaseHTTPMiddleware):
     def __init__(self, app):
@@ -17,11 +17,9 @@ class LoadUserData(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         """Decode the Bearer JWT (if any) and populate `request.state.user`
-        (as a dict) and `request.state.operations` for downstream routes/services.
-        Operations are resolved via a join through `Account`, since `Operation`
-        has no direct `user_id` column."""
+        (as a dict) for downstream routes/services. User accounts are eagerly
+        loaded to avoid lazy-loading surprises in route handlers."""
         request.state.user = None
-        request.state.operations = []
 
         auth_header = request.headers.get("Authorization")
         print("------------------AUTH HEADER--------------")
@@ -41,16 +39,13 @@ class LoadUserData(BaseHTTPMiddleware):
                 if user_id:
                     db: Session = SessionLocal()
                     try:
-                        user = db.query(User).filter(User.id == int(user_id)).first()
+                        user = db.query(User).options(
+                            joinedload(User.accounts)
+                        ).filter(User.id == int(user_id)).first()
                         if not user:
                             return JSONResponse(content={"detail": "User not found"}, status_code=401)
 
-                        operations = db.query(Operation).join(Account).filter(Account.user_id == user.id).all()
-                        print("------------------OPERATIONS--------------")
-                        print(operations)
-
                         request.state.user = user.to_dict()
-                        request.state.operations = [operation.to_dict() for operation in operations]
                     finally:
                         db.close()
             except InvalidTokenError:

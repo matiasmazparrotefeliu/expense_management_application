@@ -7,7 +7,6 @@ from sqlalchemy import and_
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
-from ..core import Security
 from ..models import Operation, OperationType, Account, Category
 from ..schemas import CreateOperation
 
@@ -28,7 +27,6 @@ class OperationService():
 
     def __init__(self, db: Session):
         self.db = db
-        self.security= Security()
 
     def _normalize_type(self, raw_type: str) -> OperationType:
         """Resolve a client-supplied type string to an `OperationType`, 400 if unrecognized."""

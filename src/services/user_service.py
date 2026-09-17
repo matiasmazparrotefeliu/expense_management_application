@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
-from ..core import Security
+from ..auth.security import Security
 from ..models import User
 from ..schemas import UserCreate, UserLogin, UserResponse
 
