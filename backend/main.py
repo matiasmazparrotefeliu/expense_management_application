@@ -1,8 +1,8 @@
 from fastapi import FastAPI
-from .db.config import Base, engine
-from .models import User, Account, Operation, Category
-from .api import UserRoutes, AccountRoutes, CategoryRoutes, OperationRoutes
-from .auth.middleware import LoadUserData
+from src.db.config import Base, engine
+from src.models import User, Account, Operation, Category
+from src.api import UserRoutes, AccountRoutes, CategoryRoutes, OperationRoutes
+from src.auth.middleware import LoadUserData
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)

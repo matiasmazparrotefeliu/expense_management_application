@@ -5,3 +5,8 @@ mysql_data_new
 *.db
 *__pycache__
 *.ipynb
+backend/myenv
+backend/*.db
+backend/__pycache__/
+backend/**/__pycache__/
+backend/data/

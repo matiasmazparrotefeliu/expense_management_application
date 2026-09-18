@@ -26,10 +26,9 @@ COPY . /app
 # Expone el puerto 8000 para la API
 EXPOSE 8000
 
-# Entrypoint: seed de categorías + lanzamiento de uvicorn (reload controlado por APP_RELOAD)
-# Se corre como módulo (-m) para que el cwd (/app) quede en sys.path y `src` sea importable.
+# Se corre como módulo (-m) para que el cwd (/app) quede en sys.path y `scripts` sea importable.
 ENTRYPOINT ["python", "-m", "scripts.entrypoint"]
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # Healthcheck sin curl (imagen slim)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

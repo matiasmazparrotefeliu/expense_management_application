@@ -35,7 +35,7 @@ def main():
     seed_categories()
     reload_app = os.getenv("APP_RELOAD", "").lower() in ("1", "true", "yes")
     uvicorn.run(
-        "src.main:app",
+        "main:app",
         host="0.0.0.0",
         port=8000,
         reload=reload_app,

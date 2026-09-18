@@ -5,7 +5,7 @@ from sqlalchemy import (
     ForeignKey, CheckConstraint, UniqueConstraint, func,
 )
 from sqlalchemy.orm import relationship
-from src.db.config import Base
+from ..db.config import Base
 
 class Account(Base):
     """A single-currency balance owned by a user. A user may hold several accounts,

@@ -3,7 +3,7 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, func
 from sqlalchemy.orm import relationship
 
-from src.db.config import Base
+from ..db.config import Base
 
 class Category(Base):
     """A predefined label operations can be classified under. Categories are

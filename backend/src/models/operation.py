@@ -4,7 +4,7 @@ from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, E
 from sqlalchemy.orm import relationship
 import datetime
 
-from src.db.config import Base
+from ..db.config import Base
 from ..enums import OperationType
 
 class Operation(Base):
