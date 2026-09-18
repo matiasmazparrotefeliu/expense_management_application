@@ -1,7 +1,7 @@
 services:
   fastapi:
     build:
-      context: .
+      context: ./backend
     image: expense-management-app:latest
     container_name: fastapi_app
     environment:
@@ -13,5 +13,5 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./:/app/data
+      - ./backend/data:/app/data
     restart: unless-stopped

@@ -1,6 +1,6 @@
 services:
   fastapi:
     volumes:
-      - ./:/app
+      - ./backend:/app
     environment:
       APP_RELOAD: "true"

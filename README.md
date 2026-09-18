@@ -74,16 +74,20 @@ Los tests se ejecutan contra el contenedor Docker corriendo (hacen peticiones HT
 ## Módulos y estructura del proyecto
 
 ```
-src/
+backend/
 ├── main.py          # Punto de entrada: inicializa la app y registra middleware + routers
-├── api/              # Definición de endpoints por dominio (users, accounts, categories, operations)
-├── services/         # Lógica de negocio de cada dominio
-├── models/            # Modelos SQLAlchemy (entidades de base de datos)
-├── schemas/           # Modelos Pydantic de entrada/salida (request/response)
-├── core/               # Seguridad (JWT, hash de contraseñas) y monedas soportadas
-├── db/                  # Configuración de conexión y sesión de base de datos
-├── enums/                # Enumeraciones compartidas (tipo de operación)
-└── middlewares/           # Middleware de autenticación (carga de usuario desde el token)
+├── src/
+│   ├── api/              # Definición de endpoints por dominio (users, accounts, categories, operations)
+│   ├── services/         # Lógica de negocio de cada dominio
+│   ├── models/            # Modelos SQLAlchemy (entidades de base de datos)
+│   ├── schemas/           # Modelos Pydantic de entrada/salida (request/response)
+│   ├── core/               # Seguridad (JWT, hash de contraseñas) y monedas soportadas
+│   ├── db/                  # Configuración de conexión y sesión de base de datos
+│   ├── auth/                # Autenticación (Security, LoadUserData, get_current_user)
+│   ├── enums/                # Enumeraciones compartidas (tipo de operación)
+│   └── middlewares/           # Middleware de autenticación (ya integrado en src/auth/)
+└── scripts/
+    └── entrypoint.py     # Seed de categorías + lanzamiento de uvicorn
 ```
 
 Los cuatro módulos funcionales expuestos por la API son: **users** (usuarios y autenticación), **accounts** (cuentas), **categories** (categorías) y **operations** (operaciones de ingreso/egreso).
@@ -132,9 +136,9 @@ La autenticación se realiza mediante un header `Authorization: Bearer <token>`,
 
 ## Persistencia de datos
 
-El motor de base de datos por defecto es **SQLite**, persistido mediante un bind mount del directorio `data/` en el contenedor Docker (`DB_URL=sqlite:////app/data/expense_app.db`). También es posible conectarse a **MySQL** configurando `DB_URL` o las variables `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME`.
+El motor de base de datos por defecto es **SQLite**, persistido mediante un bind mount del directorio `backend/data/` en el contenedor Docker (`DB_URL=sqlite:////app/data/expense_app.db`). También es posible conectarse a **MySQL** configurando `DB_URL` o las variables `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME`.
 
-El esquema se crea automáticamente mediante `Base.metadata.create_all` al iniciar la aplicación. Las categorías por defecto se siembran automáticamente al levantar el contenedor Docker, a través de `scripts/entrypoint.py`.
+El esquema se crea automáticamente mediante `Base.metadata.create_all` al iniciar la aplicación. Las categorías por defecto se siembran automáticamente al levantar el contenedor Docker, a través de `backend/scripts/entrypoint.py`.
 
 ### Modelos y relaciones
 
