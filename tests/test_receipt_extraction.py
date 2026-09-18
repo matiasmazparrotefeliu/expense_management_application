@@ -7,8 +7,8 @@ API key is required."""
 import pytest
 from fastapi import HTTPException
 
-from src.core.receipt_text import ReceiptTextExtractor
-from src.services.receipt_service import ReceiptService
+from backend.src.core.receipt_text import ReceiptTextExtractor
+from backend.src.services.receipt_service import ReceiptService
 
 CATEGORY_OPTIONS = [
     {"id": 1, "name": "sueldo"},
