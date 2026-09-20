@@ -1,6 +1,6 @@
 # AGENTS.md
 
-FastAPI + SQLAlchemy (MySQL) expense-tracking API. Python 3.11, deps in `requirements.txt`. No linter, no CI.
+FastAPI + SQLAlchemy (MySQL) expense-tracking API + React + TypeScript frontend. Python 3.11, deps in `backend/requirements.txt`. Node.js deps in `frontend/package.json`.
 
 ## Change rules
 
@@ -34,6 +34,7 @@ FastAPI + SQLAlchemy (MySQL) expense-tracking API. Python 3.11, deps in `require
 - All authentication logic lives in the `backend/src/auth/` package: `Security` class (`security.py`), `LoadUserData` middleware (`middleware.py`), and `get_current_user` dependency (`dependencies.py`).
 - The `backend/src/auth/__init__.py` uses lazy imports (no eager re-exports) to avoid triggering DB config loading at import time. Consumers must import directly from submodules: `from .security import Security`, `from .middleware import LoadUserData`, `from .dependencies import get_current_user`.
 - JWT handled by `LoadUserData` middleware, not FastAPI dependencies. It decodes the `Authorization: Bearer <token>` header and sets `request.state.user` to a **dict** (`user.to_dict()`), so route/service code uses `user['id']`, not `user.id`. User accounts are eagerly loaded via `joinedload(User.accounts)` to prevent lazy-loading surprises.
+- **Middleware ordering**: in `backend/main.py`, `LoadUserData` is registered **before** `CORSMiddleware` so that CORS ends up the outermost middleware and answers `OPTIONS` preflights without hitting auth logic; `LoadUserData` also short-circuits `OPTIONS` requests (pass-through) defensively. `CORS_ORIGINS` dedupes `FRONTEND_URL` + `http://localhost:3000` + `http://frontend:3000` — the browser-facing origin (`localhost:3000`) differs from the compose-internal hostname (`frontend:3000`), so trusting only `FRONTEND_URL` breaks CORS in Docker.
 - Tokens use PyJWT (`jwt`), payload is minimal: `sub` (user id) + `exp`/`iat`. `SECRET_KEY` (env `SECRET_KEY`, dev default), `ALGORITHM`, and `PasswordHash` live as module constants in `backend/src/auth/security.py` (single source of truth — do not hardcode elsewhere).
 - Passwords are hashed with **argon2** via `pwdlib` (`PasswordHash.recommended()`). Rows hashed under the old passlib/bcrypt will not verify — re-register them.
 
@@ -41,7 +42,7 @@ FastAPI + SQLAlchemy (MySQL) expense-tracking API. Python 3.11, deps in `require
 
 - Routes are registered imperatively: each route class's `__init__` calls `self.router.add_api_route(...)`; there are no decorators. New endpoints go in `backend/src/api/*_routes.py`, logic in `backend/src/services/*`. Current sets: `UserRoutes` (`/users`), `AccountRoutes` (`/accounts` — `GET /` lists own active accounts, `POST /new` creates a zero-balance account), `CategoryRoutes` (`/categories` — read-only catalog), `OperationRoutes` (`/operations`).
 - Protected routes use `user: dict = Depends(get_current_user)` to enforce auth via the `LoadUserData` middleware; the dependency (`backend/src/auth/dependencies.py`) raises 401 when `request.state.user` is absent.
-- Services return `JSONResponse` directly; the `response_model` on routes is effectively bypassed. The `to_dict()` on SQLAlchemy models is the de-facto serializer.
+- Services return `JSONResponse` directly; the `response_model` on routes is effectively bypassed. The `to_dict()` on SQLAlchemy models is the de-facto serializer. `POST /users/new` returns `201` on success and `409` when the name/email is already taken (surfaced in the frontend `Register` form as an "ya registrado" warning).
 - Currency whitelist lives in `backend/src/core/currencies.py`: `SUPPORTED_CURRENCIES` (env-overridable, default `USD,ARS`) plus `validate_supported_currency()`, shared by the `AccountCreate` and `CreateOperation` schemas (422 on rejection) — never re-implement the check in a service or model.
 - Service class naming is inconsistent: `User_Service` (snake case) vs `OperationService`/`AccountService`/`CategoryService` — match the existing file's convention.
 - Print-based debug statements are pervasive throughout; keep them when touching code (they're part of the current workflow).
@@ -69,3 +70,18 @@ FastAPI + SQLAlchemy (MySQL) expense-tracking API. Python 3.11, deps in `require
 - `test_auth.py` decodes JWTs with the dev-default `SECRET_KEY`/`ALGORITHM` from `backend/src/auth/security.py` — importing that module is safe (no DB side effects); the container runs with the same default.
 - `tests/test_receipt_extraction.py` is the exception to the container rule: in-process unit tests over the pure helpers of `ReceiptTextExtractor`/`ReceiptService` (validation, prompt, JSON parsing, payload mapping) with **no DB and no provider call**, so they run without a key. The container-side receipt tests (`tests/test_receipts.py`) only cover paths that fail **before** the AI call (401/422/404/403) for the same reason.
 - Tests are NOT run by the agent (Change rules) — the user executes `python -m pytest tests -v` manually after every change.
+
+## Frontend
+
+- **Framework**: React 18 + TypeScript, built with **Vite**.
+- **Styling**: **Tailwind CSS** v3.
+- **Routing**: **React Router v6** (`createBrowserRouter`).
+- **HTTP**: **Axios** with interceptors (baseURL `http://localhost:8000`, JWT auto-injection, 401 → redirect to `/login`).
+- **Forms**: **React Hook Form** + **Zod** validation. `frontend/src/components/common/Input/Input.tsx` is a `forwardRef` component so `register()`'s `ref` reaches the inner `<input>` (required in React 18; without it the field value is never read on submit → spurious "required" errors). Form fields set explicit `autoComplete` attributes to avoid ghost autofill.
+- **State**: **Context + useReducer** (`AuthProvider`) for auth state.
+- **Testing**: **Vitest** + `@testing-library/react`.
+- **Lint/Format**: **ESLint** (flat config) + **Prettier**.
+- **Structure**: `frontend/src/` with `api/`, `components/`, `features/auth/`, `hooks/`, `types/`, `utils/`, `styles/`, `__tests__/`.
+- **Run**: `cd frontend && npm run dev` (port 3000, `/api` proxies to backend at 8000).
+- **Tests**: `cd frontend && npm run test`.
+- **Entry**: `frontend/src/main.tsx` wraps `<AuthProvider><AppRouter /></AuthProvider>`.
