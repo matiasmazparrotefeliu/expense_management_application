@@ -38,7 +38,7 @@ class User_Service():
     def create_new(self, user: UserCreate):
         """Register a new user with a hashed password. No account is created here —
         the client creates one or more `Account` rows separately once logged in.
-        Duplicate `name` or `email` (both unique) yields a 400."""
+        Duplicate `name` or `email` (both unique) yields a 409."""
         if not user.name:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not valid username was pass")
         if not user.email:
@@ -54,7 +54,7 @@ class User_Service():
         except IntegrityError:
             self.db.rollback()
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="A user with that name or email already exists",
             )
         self.db.refresh(new_user)

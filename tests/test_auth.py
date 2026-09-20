@@ -51,6 +51,21 @@ def test_register_empty_fields_returns_400(client):
         assert response.status_code == 400, payload
 
 
+def test_register_duplicate_user_returns_409(client):
+    first = client.post("/users/new", json=USER_PAYLOAD)
+    assert first.status_code == 201
+
+    second = client.post("/users/new", json=USER_PAYLOAD)
+    assert second.status_code == 409
+    assert second.json()["detail"] == "A user with that name or email already exists"
+
+    duplicate_email = client.post(
+        "/users/new",
+        json={"name": "otro_nombre", "email": USER_PAYLOAD["email"], "password": "secret"},
+    )
+    assert duplicate_email.status_code == 409
+
+
 def test_login_success_returns_token(client, registered_user):
     response = client.post(
         "/users/login",
