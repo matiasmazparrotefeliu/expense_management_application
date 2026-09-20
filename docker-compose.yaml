@@ -10,8 +10,29 @@ services:
       - API_URL=${API_URL:-}
       - API_KEY=${API_KEY:-}
       - AI_MODEL=${AI_MODEL:-deepseek-v4-flash-free}
+      - FRONTEND_URL=http://frontend:3000
     ports:
       - "8000:8000"
     volumes:
       - ./backend/data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+    image: expense-management-frontend:latest
+    container_name: frontend_app
+    ports:
+      - "3000:3000"
+    depends_on:
+      fastapi:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
     restart: unless-stopped
