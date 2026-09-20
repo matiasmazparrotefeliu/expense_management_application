@@ -4,3 +4,11 @@ services:
       - ./backend:/app
     environment:
       APP_RELOAD: "true"
+      FRONTEND_URL=http://localhost:3000
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
