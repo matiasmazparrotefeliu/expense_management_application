@@ -1,0 +1,15 @@
+node_modules
+dist
+*.local
+.env
+.env.*
+!.env.example
+__pycache__
+*.pyc
+*.db
+*.sqlite
+backend/
+frontend/node_modules
+frontend/dist
+.DS_Store
+Thumbs.db

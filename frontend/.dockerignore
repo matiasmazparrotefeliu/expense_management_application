@@ -1,0 +1,12 @@
+node_modules
+dist
+*.local
+.env
+.env.*
+!.env.example
+__pycache__
+*.pyc
+.git
+AGENTS.md
+docker-compose*.yaml
+Dockerfile
