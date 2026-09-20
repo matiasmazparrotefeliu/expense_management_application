@@ -21,6 +21,9 @@ class LoadUserData(BaseHTTPMiddleware):
         loaded to avoid lazy-loading surprises in route handlers."""
         request.state.user = None
 
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         auth_header = request.headers.get("Authorization")
         print("------------------AUTH HEADER--------------")
         print(auth_header)
