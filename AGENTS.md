@@ -81,7 +81,7 @@ FastAPI + SQLAlchemy (MySQL) expense-tracking API + React + TypeScript frontend.
 - **State**: **Context + useReducer** (`AuthProvider`) for auth state.
 - **Testing**: **Vitest** + `@testing-library/react`.
 - **Lint/Format**: **ESLint** (flat config) + **Prettier**.
-- **Structure**: `frontend/src/` with `api/`, `components/`, `features/auth/`, `hooks/`, `types/`, `utils/`, `styles/`, `__tests__/`.
+- **Structure**: `frontend/src/` with `api/` (`authApi.ts`, `operationsApi.ts` — `getAccounts`/`getOperations`/`getCategories`/`createAccount` (→ `POST /accounts/new`)/`createOperation` (→ `POST /operations/new`)), `components/`, `features/auth/` (incl. `Dashboard.tsx` — the operations panel at `/` under `ProtectedRoute`: account selector, savings-balance card, an operations table filtered client-side by the selected `account_id` from `GET /operations`, a "Nueva operación" form that posts to `POST /operations/new` (account read-only from the current selection, `type` sent as `egreso`/`ingreso`/`transferencia`, `category_id` from `GET /categories/`) and reloads accounts+operations after success so the balance updates, and a "Nueva cuenta" form that creates the account and auto-selects it), `hooks/`, `types/` (`auth.ts`, `operation.ts`), `utils/`, `styles/`, `__tests__/`.
 - **Run**: `cd frontend && npm run dev` (port 3000, `/api` proxies to backend at 8000).
 - **Tests**: `cd frontend && npm run test`.
 - **Entry**: `frontend/src/main.tsx` wraps `<AuthProvider><AppRouter /></AuthProvider>`.
