@@ -83,6 +83,13 @@ def test_login_success_returns_token(client, registered_user):
     assert data["token_type"] == "bearer"
     assert data["access_token"]
 
+    user = data["user"]
+    assert user["id"] == registered_user["id"]
+    assert user["name"] == USER_PAYLOAD["name"]
+    assert user["email"] == USER_PAYLOAD["email"]
+    assert user["accounts"] == []
+    assert "password" not in user
+
     claims = jwt.decode(data["access_token"], SECRET_KEY, algorithms=[ALGORITHM], leeway=1)
     assert set(claims.keys()) == {"sub", "exp", "iat"}
     assert claims["sub"] == str(registered_user["id"])
