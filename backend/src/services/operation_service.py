@@ -83,7 +83,9 @@ class OperationService():
         operations debit the account like `expense`. If `name` is omitted on a
         `transfer` operation it defaults to "Other". When the payload carries a
         `currency`, it must match the account's currency (400 otherwise); when
-        omitted, the account's currency is snapshotted onto the operation.
+        omitted, the account's currency is snapshotted onto the operation. The
+        category must belong to the same `OperationType` as the operation (400
+        otherwise, e.g. an `Expense` category used on an `income` operation).
         """
         category = self.db.query(Category).filter(
             Category.id == operation.category_id, Category.is_active == True
@@ -95,6 +97,12 @@ class OperationService():
             )
 
         op_type = self._normalize_type(operation.type)
+        if category.type != op_type:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"The category '{category.name}' is of type {category.type.value} but "
+                       f"the operation is of type {op_type.value}.",
+            )
 
         try:
             account = self.get_owned_account(user_id, operation.account_id, lock=True)
