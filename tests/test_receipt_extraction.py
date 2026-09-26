@@ -11,9 +11,10 @@ from src.core.receipt_text import ReceiptTextExtractor
 from src.services.receipt_service import ReceiptService
 
 CATEGORY_OPTIONS = [
-    {"id": 1, "name": "sueldo"},
-    {"id": 2, "name": "supermercado"},
-    {"id": 3, "name": "alquiler"},
+    {"id": 1, "name": "sueldo", "type": "Income"},
+    {"id": 2, "name": "supermercado", "type": "Expense"},
+    {"id": 3, "name": "alquiler", "type": "Expense"},
+    {"id": 4, "name": "transferencias", "type": "Transfer"},
 ]
 
 
@@ -146,7 +147,20 @@ class TestToOperationPayload:
             "concept": "Sent money",
             "amount": 100,
             "type": "transfer",
-            "category": "alquiler",
+            "category": "transferencias",
         }
         payload = ReceiptService.to_operation_payload(extraction, CATEGORY_OPTIONS)
         assert payload["name"] is None
+
+    def test_category_of_wrong_type_raises_400(self):
+        """A category whose type doesn't match the suggested operation type is rejected."""
+        extraction = {
+            "concept": "Sent money",
+            "amount": 100,
+            "type": "transfer",
+            "category": "alquiler",
+        }
+        with pytest.raises(HTTPException) as exc_info:
+            ReceiptService.to_operation_payload(extraction, CATEGORY_OPTIONS)
+        assert exc_info.value.status_code == 400
+        assert "not in the catalog" in exc_info.value.detail
