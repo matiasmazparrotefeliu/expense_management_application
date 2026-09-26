@@ -23,9 +23,17 @@ class AccountService():
         return JSONResponse(content=accounts_dict, status_code=status.HTTP_200_OK)
 
     def create_new(self, user_id: int, account: AccountCreate):
-        """Create a new zero-balance account for the caller. Fails with 400 if the
-        user already has an account with the same name (enforced by a DB unique constraint)."""
-        new_account = Account(name=account.name, currency=account.currency, user_id=user_id)
+        """Create a new account for the caller seeded with the client-supplied
+        `balance` (> 0, validated by the schema) and `bank` entity. Fails with 400
+        if the user already has an account with the same name (enforced by a DB
+        unique constraint)."""
+        new_account = Account(
+            name=account.name,
+            currency=account.currency,
+            balance=account.balance,
+            bank=account.bank,
+            user_id=user_id,
+        )
         self.db.add(new_account)
         try:
             self.db.commit()
