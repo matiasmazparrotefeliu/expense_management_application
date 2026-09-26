@@ -43,3 +43,8 @@ class TokenResponse(BaseModel):
 
     access_token: str
     token_type: str
+
+class LoginResponse(TokenResponse):
+    """Login payload: the JWT plus the authenticated user's profile."""
+
+    user: UserResponse

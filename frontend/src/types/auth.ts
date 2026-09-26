@@ -20,6 +20,10 @@ export interface TokenResponse {
   token_type: string;
 }
 
+export interface LoginResponse extends TokenResponse {
+  user: User;
+}
+
 export interface LoginPayload {
   email: string;
   password: string;

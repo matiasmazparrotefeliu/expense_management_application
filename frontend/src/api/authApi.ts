@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { RegisterPayload, LoginPayload, TokenResponse, User } from '../types/auth';
+import type { RegisterPayload, LoginPayload, LoginResponse, TokenResponse, User } from '../types/auth';
 
 export const register = async (data: RegisterPayload): Promise<User> => {
   const response = await apiClient.post<User>('/users/new', data);
@@ -7,11 +7,11 @@ export const register = async (data: RegisterPayload): Promise<User> => {
 };
 
 export const login = async (data: LoginPayload): Promise<{ user: User; token: TokenResponse }> => {
-  const response = await apiClient.post<TokenResponse>('/users/login', data);
-  const { access_token, token_type } = response.data;
+  const response = await apiClient.post<LoginResponse>('/users/login', data);
+  const { access_token, token_type, user } = response.data;
   localStorage.setItem('access_token', access_token);
-  const userResponse = await apiClient.get<User>('/users/');
-  return { user: userResponse.data, token: { access_token, token_type } };
+  localStorage.setItem('user', JSON.stringify(user));
+  return { user, token: { access_token, token_type } };
 };
 
 export const logout = (): void => {

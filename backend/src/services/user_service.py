@@ -1,6 +1,5 @@
-"""Business logic for user signup, login and lookup."""
+"""Business logic for user signup and login."""
 
-import json
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
@@ -8,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from ..auth.security import Security
 from ..models import User
-from ..schemas import UserCreate, UserLogin, UserResponse
+from ..schemas import UserCreate, UserLogin
 
 class User_Service():
     """Wraps the `User` queries and mutations exposed through `UserRoutes`."""
@@ -16,24 +15,6 @@ class User_Service():
     def __init__(self, db: Session):
         self.db = db
         self.security= Security()
-
-    def get_all(self) -> UserResponse:
-        """List active users with their accounts eagerly loaded."""
-        users = self.db.query(User).options(joinedload(User.accounts)).filter(User.is_active == True).all()
-        users_dict = [user.to_dict() for user in users]
-        print({'users_list': users_dict})
-        print({'users_dict': users_dict})
-        return JSONResponse(content=users_dict, status_code=status.HTTP_200_OK)
-
-    def get_by_id(self, id: int):
-        """Fetch a single active user by id, 404 if missing or inactive."""
-        user = self.db.query(User).options(joinedload(User.accounts)).filter(User.id == id, User.is_active == True).first()
-        if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-        user_dict = user.to_dict()
-        user_dict.pop('_sa_instance_state', None)
-        print({'user_list': user_dict})
-        return JSONResponse(content=user_dict, status_code=status.HTTP_200_OK)
 
     def create_new(self, user: UserCreate):
         """Register a new user with a hashed password. No account is created here —
@@ -63,8 +44,17 @@ class User_Service():
         return JSONResponse(content=new_user_dict, status_code=status.HTTP_201_CREATED)
 
     def login(self, user: UserLogin):
-        """Verify credentials for an active user and return a signed JWT."""
-        user_ = self.db.query(User).filter(User.email == user.email, User.is_active == True).first()
+        """Verify credentials for an active user and return the JWT plus the user profile.
+
+        Accounts are eager-loaded before `to_dict()` so the profile is serialized
+        while the session is still open (mirrors the middleware's `joinedload`).
+        """
+        user_ = (
+            self.db.query(User)
+            .options(joinedload(User.accounts))
+            .filter(User.email == user.email, User.is_active == True)
+            .first()
+        )
         if not user_:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         verify_password = self.security.verify_passwords(user.password, user_.password)
@@ -73,4 +63,4 @@ class User_Service():
         print("-----------------USER FOUND----------------------")
         print(user_)
         token = self.security.create_access_token({"sub": str(user_.id)})
-        return token
+        return token, user_.to_dict()

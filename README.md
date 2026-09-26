@@ -98,10 +98,8 @@ Los cuatro módulos funcionales expuestos por la API son: **users** (usuarios y 
 
 | Método | Path | Auth | Descripción |
 |---|---|---|---|
-| GET | `/users/` | No | Lista todos los usuarios activos, con sus cuentas |
-| GET | `/users/{id}` | No | Obtiene un usuario activo por id |
 | POST | `/users/new` | No | Registra un usuario nuevo (`name`, `email`, `password`) |
-| POST | `/users/login` | No | Login (`email`, `password`); devuelve `access_token` y `token_type` |
+| POST | `/users/login` | No | Login (`email`, `password`); devuelve `access_token`, `token_type` y `user` (perfil del usuario con sus cuentas) |
 
 ### Accounts (`/accounts`)
 
