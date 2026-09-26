@@ -46,7 +46,10 @@ class ReceiptService():
         receipt_text = self.extractor.extract(file_bytes, filename)
 
         categories = self.db.query(Category).filter(Category.is_active == True).all()
-        category_options = [{"id": category.id, "name": category.name} for category in categories]
+        category_options = [
+            {"id": category.id, "name": category.name, "type": category.type.value}
+            for category in categories
+        ]
 
         prompt = self.build_extraction_prompt(receipt_text, category_options)
         content = self.call_provider(api_url, api_key, model, prompt)
@@ -148,7 +151,10 @@ class ReceiptService():
     @staticmethod
     def to_operation_payload(extraction: dict, category_options: list) -> dict:
         """Map the extracted dict onto a `CreateOperation` payload; 400 when required
-        fields are missing/invalid or the category doesn't match the active catalog."""
+        fields are missing/invalid or the category doesn't match the active catalog.
+
+        The category is matched by name AND by the operation type the model
+        suggested, since categories are now tied to an `OperationType`."""
         fields = ("concept", "amount", "type")
         missing = [
             field for field in fields
@@ -174,15 +180,21 @@ class ReceiptService():
             )
 
         requested_category = str(extraction.get("category", "")).strip().lower()
+        op_type = str(extraction["type"]).strip().lower()
         matched = next(
-            (option for option in category_options if option["name"].strip().lower() == requested_category),
+            (
+                option for option in category_options
+                if option["name"].strip().lower() == requested_category
+                and option["type"].lower() == op_type
+            ),
             None,
         )
         if matched is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"The AI suggested category '{extraction.get('category')}' is not in the "
-                       f"catalog. Valid categories: {[option['name'] for option in category_options]}",
+                       f"catalog or does not belong to the '{op_type}' operation type. Valid "
+                       f"categories: {[option['name'] for option in category_options]}",
             )
 
         currency = extraction.get("currency")
