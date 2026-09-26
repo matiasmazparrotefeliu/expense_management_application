@@ -12,7 +12,12 @@ export const getOperations = async (): Promise<Operation[]> => {
   return response.data;
 };
 
-export const createAccount = async (data: { name: string; currency: string }): Promise<Account> => {
+export const createAccount = async (data: {
+  name: string;
+  currency: string;
+  balance: number;
+  bank: string;
+}): Promise<Account> => {
   const response = await apiClient.post<Account>('/accounts/new', data);
   return response.data;
 };

@@ -78,7 +78,8 @@ class OperationService():
         update to avoid lost updates under concurrent writes — this only provides
         real row locking on MySQL; SQLite (used in tests/dev) ignores it. Rejects
         the operation with 403 if the account doesn't belong to the caller, and
-        with 400 if applying it would take the balance negative. `transfer`
+        with 400 if a debit would leave the balance at or below zero (the balance
+        must always stay strictly greater than the debited amount). `transfer`
         operations debit the account like `expense`. If `name` is omitted on a
         `transfer` operation it defaults to "Other". When the payload carries a
         `currency`, it must match the account's currency (400 otherwise); when
@@ -107,7 +108,7 @@ class OperationService():
             amount = Decimal(str(operation.amount))
             delta = amount if op_type == OperationType.income else -amount
             new_balance = account.balance + delta
-            if new_balance < 0:
+            if new_balance <= 0:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Insufficient balance")
 
             name = operation.name or ("Other" if op_type == OperationType.transfer else None)

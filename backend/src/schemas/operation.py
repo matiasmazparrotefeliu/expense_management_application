@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from ..core.currencies import validate_supported_currency
 
@@ -36,10 +36,14 @@ class CreateOperation(BaseModel):
     `currency` is optional: when supplied it must be a supported currency
     (validated here against `SUPPORTED_CURRENCIES`) and must match the target
     account's currency (enforced in the service with a 400); when omitted the
-    operation simply inherits the account's currency."""
+    operation simply inherits the account's currency.
+
+    `amount` must be strictly positive (422 otherwise) — a zero or negative
+    amount would otherwise let a debit grow the balance instead of shrinking it.
+    """
 
     concept: str
-    amount: float
+    amount: float = Field(gt=0)
     type: str
     account_id: int
     category_id: int

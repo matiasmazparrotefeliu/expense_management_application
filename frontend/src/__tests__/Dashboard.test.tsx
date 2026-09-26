@@ -19,8 +19,8 @@ vi.mock('@/api/operationsApi', () => ({
 }));
 
 const accounts: Account[] = [
-  { id: 1, name: 'Cash USD', currency: 'USD', balance: 1200.5, is_active: true },
-  { id: 2, name: 'Efectivo ARS', currency: 'ARS', balance: 50000, is_active: true },
+  { id: 1, name: 'Cash USD', currency: 'USD', balance: 1200.5, bank: 'BBVA', is_active: true },
+  { id: 2, name: 'Efectivo ARS', currency: 'ARS', balance: 50000, bank: 'Mercado Pago', is_active: true },
 ];
 
 const newAccount: Account = {
@@ -28,6 +28,7 @@ const newAccount: Account = {
   name: 'Inversiones',
   currency: 'ARS',
   balance: 0,
+  bank: 'Banco Galicia',
   is_active: true,
 };
 
@@ -85,8 +86,8 @@ describe('Dashboard', () => {
 
     render(<Dashboard />);
 
-    expect(await screen.findByText('Cash USD (USD)')).toBeInTheDocument();
-    expect(screen.getByText('Efectivo ARS (ARS)')).toBeInTheDocument();
+    expect(await screen.findByText('Cash USD — BBVA (USD)')).toBeInTheDocument();
+    expect(screen.getByText('Efectivo ARS — Mercado Pago (ARS)')).toBeInTheDocument();
     expect(screen.getByText('Balance total de ahorros')).toBeInTheDocument();
   });
 
@@ -123,12 +124,21 @@ describe('Dashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nueva cuenta' }));
     fireEvent.change(screen.getByLabelText('Nombre de la cuenta'), { target: { value: 'Inversiones' } });
     fireEvent.change(screen.getByLabelText('Moneda'), { target: { value: 'ARS' } });
+    fireEvent.change(screen.getByLabelText('Balance inicial'), { target: { value: '500' } });
+    fireEvent.change(screen.getByLabelText('Entidad bancaria / plataforma'), {
+      target: { value: 'Banco Galicia' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
 
     await waitFor(() => {
-      expect(createAccount).toHaveBeenCalledWith({ name: 'Inversiones', currency: 'ARS' });
+      expect(createAccount).toHaveBeenCalledWith({
+        name: 'Inversiones',
+        currency: 'ARS',
+        balance: 500,
+        bank: 'Banco Galicia',
+      });
     });
-    expect(await screen.findByText('Inversiones (ARS)')).toBeInTheDocument();
+    expect(await screen.findByText('Inversiones — Banco Galicia (ARS)')).toBeInTheDocument();
   });
 
   it('shows a warning when creating an account with an existing name', async () => {
@@ -141,9 +151,13 @@ describe('Dashboard', () => {
 
     render(<Dashboard />);
 
-    await screen.findByText('Cash USD (USD)');
+    await screen.findByText('Cash USD — BBVA (USD)');
     fireEvent.click(screen.getByRole('button', { name: 'Nueva cuenta' }));
     fireEvent.change(screen.getByLabelText('Nombre de la cuenta'), { target: { value: 'Cash USD' } });
+    fireEvent.change(screen.getByLabelText('Balance inicial'), { target: { value: '100' } });
+    fireEvent.change(screen.getByLabelText('Entidad bancaria / plataforma'), {
+      target: { value: 'BBVA' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
 
     expect(await screen.findByText('Ya existe una cuenta con ese nombre')).toBeInTheDocument();
@@ -162,7 +176,7 @@ describe('Dashboard', () => {
 
     render(<Dashboard />);
 
-    await screen.findByText('Cash USD (USD)');
+    await screen.findByText('Cash USD — BBVA (USD)');
     fireEvent.click(screen.getByRole('button', { name: 'Nueva operación' }));
     fireEvent.change(screen.getByLabelText('Concepto'), { target: { value: 'Gimnasio' } });
     fireEvent.change(screen.getByLabelText('Monto'), { target: { value: '150' } });
@@ -195,7 +209,7 @@ describe('Dashboard', () => {
 
     render(<Dashboard />);
 
-    await screen.findByText('Cash USD (USD)');
+    await screen.findByText('Cash USD — BBVA (USD)');
     fireEvent.click(screen.getByRole('button', { name: 'Nueva operación' }));
     fireEvent.change(screen.getByLabelText('Concepto'), { target: { value: 'Compra grande' } });
     fireEvent.change(screen.getByLabelText('Monto'), { target: { value: '99999' } });

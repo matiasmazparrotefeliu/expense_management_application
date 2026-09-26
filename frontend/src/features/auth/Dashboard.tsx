@@ -52,6 +52,8 @@ export function Dashboard() {
   const [showAccountForm, setShowAccountForm] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
   const [newAccountCurrency, setNewAccountCurrency] = useState(CURRENCIES[0]);
+  const [newAccountBalance, setNewAccountBalance] = useState('');
+  const [newAccountBank, setNewAccountBank] = useState('');
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [accountError, setAccountError] = useState<string | null>(null);
 
@@ -115,6 +117,9 @@ export function Dashboard() {
     operationAmount > 0 &&
     !!newOperationCategoryId;
 
+  const accountBalance = parseAmount(newAccountBalance);
+  const canSubmitAccount = !!newAccountName.trim() && accountBalance > 0 && !!newAccountBank.trim();
+
   const handleLogout = async () => {
     await logout();
     navigate('/login', { replace: true });
@@ -125,10 +130,17 @@ export function Dashboard() {
     setCreatingAccount(true);
     setAccountError(null);
     try {
-      const created = await createAccount({ name: newAccountName.trim(), currency: newAccountCurrency });
+      const created = await createAccount({
+        name: newAccountName.trim(),
+        currency: newAccountCurrency,
+        balance: accountBalance,
+        bank: newAccountBank.trim(),
+      });
       setAccounts((prev) => [...prev, created]);
       setSelectedAccountId(created.id);
       setNewAccountName('');
+      setNewAccountBalance('');
+      setNewAccountBank('');
       setShowAccountForm(false);
     } catch (err) {
       const status = axios.isAxiosError(err) ? err.response?.status : undefined;
@@ -244,7 +256,7 @@ export function Dashboard() {
                   >
                     {selectedAccount && (
                       <option value={selectedAccount.id}>
-                        {selectedAccount.name} ({selectedAccount.currency})
+                        {selectedAccount.name} — {selectedAccount.bank} ({selectedAccount.currency})
                       </option>
                     )}
                   </select>
@@ -392,6 +404,34 @@ export function Dashboard() {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label htmlFor="account-balance" className="block text-sm font-medium text-gray-700 mb-1">
+                    Balance inicial
+                  </label>
+                  <input
+                    id="account-balance"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={newAccountBalance}
+                    onChange={(event) => setNewAccountBalance(event.target.value)}
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="account-bank" className="block text-sm font-medium text-gray-700 mb-1">
+                    Entidad bancaria / plataforma
+                  </label>
+                  <input
+                    id="account-bank"
+                    type="text"
+                    value={newAccountBank}
+                    onChange={(event) => setNewAccountBank(event.target.value)}
+                    placeholder="Ej: Banco Nación, Mercado Pago"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
                 <div className="flex items-center justify-end gap-2">
                   <button
                     type="button"
@@ -405,7 +445,7 @@ export function Dashboard() {
                   </button>
                   <button
                     type="submit"
-                    disabled={creatingAccount || !newAccountName.trim()}
+                    disabled={creatingAccount || !canSubmitAccount}
                     className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     {creatingAccount ? 'Creando...' : 'Crear cuenta'}
@@ -437,7 +477,7 @@ export function Dashboard() {
               >
                 {accounts.map((account) => (
                   <option key={account.id} value={account.id}>
-                    {account.name} ({account.currency})
+                    {account.name} — {account.bank} ({account.currency})
                   </option>
                 ))}
               </select>
