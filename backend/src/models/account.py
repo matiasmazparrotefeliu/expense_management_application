@@ -8,8 +8,9 @@ from sqlalchemy.orm import relationship
 from ..db.config import Base
 
 class Account(Base):
-    """A single-currency balance owned by a user. A user may hold several accounts,
-    in the same or different currencies (e.g. "Cash USD" and "Cash ARS")."""
+    """A single-currency balance owned by a user and held at a banking entity/platform
+    (`bank`, non-empty). A user may hold several accounts in the same or different
+    currencies (e.g. "Cash USD" and "Cash ARS")."""
 
     __tablename__ = 'accounts'
     id = Column(Integer, primary_key=True, index=True)
@@ -18,6 +19,7 @@ class Account(Base):
     name = Column(String(100), nullable=False)
     currency = Column(String(3), nullable=False)
     balance = Column(Numeric(14, 2), nullable=False, default=0, server_default="0")
+    bank = Column(String(100), nullable=False)
     is_active = Column(Boolean, nullable=False, default=True, server_default="1")
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
@@ -37,5 +39,6 @@ class Account(Base):
             "name": self.name,
             "currency": self.currency,
             "balance": float(self.balance),
+            "bank": self.bank,
             "is_active": self.is_active,
         }
