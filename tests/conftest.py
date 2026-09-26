@@ -65,7 +65,8 @@ def category():
 
     Categories are never truncated, so we reuse the first active one. Only if the
     catalog were somehow empty (e.g. on a freshly created test DB) do we insert a
-    fallback row directly into the test DB."""
+    fallback row directly into the test DB. The SQLite `type` column stores the
+    enum member name (`expense`/`income`/`transfer`), so raw inserts use those."""
     connection = sqlite3.connect(TEST_DB_PATH)
     try:
         row = connection.execute(
@@ -73,14 +74,41 @@ def category():
         ).fetchone()
         if row is None:
             cursor = connection.execute(
-                "INSERT INTO categories (name, description, is_active) VALUES (?, ?, 1)",
-                ("test category", "Inserted by tests when the catalog is empty"),
+                "INSERT INTO categories (name, type, description, is_active) VALUES (?, ?, ?, 1)",
+                ("test category", "expense", "Inserted by tests when the catalog is empty"),
             )
             connection.commit()
             return cursor.lastrowid
         return row[0]
     finally:
         connection.close()
+
+
+@pytest.fixture
+def category_factory():
+    """Factory fixture: return the id of an active category of the given type
+    (`expense`/`income`/`transfer`), inserting a fallback row when the typed
+    catalog is empty on a fresh test DB."""
+    def _get_for_type(operation_type_name):
+        connection = sqlite3.connect(TEST_DB_PATH)
+        try:
+            row = connection.execute(
+                "SELECT id FROM categories WHERE is_active = 1 AND type = ? ORDER BY id LIMIT 1",
+                (operation_type_name,),
+            ).fetchone()
+            if row is None:
+                cursor = connection.execute(
+                    "INSERT INTO categories (name, type, description, is_active) VALUES (?, ?, ?, 1)",
+                    (f"test {operation_type_name} category", operation_type_name,
+                     "Inserted by tests when the typed catalog is empty"),
+                )
+                connection.commit()
+                return cursor.lastrowid
+            return row[0]
+        finally:
+            connection.close()
+
+    return _get_for_type
 
 
 @pytest.fixture
@@ -110,11 +138,18 @@ def account_payload():
 
 
 @pytest.fixture
-def account(client, auth_headers, category, account_payload):
-    """Create a valid account via the API and return its id plus auth headers and the
-    category id, tagged to the current user. Shared by every test file that needs
-    an owned account."""
+def account(client, auth_headers, category, category_factory, account_payload):
+    """Create a valid account via the API and return its id plus auth headers and
+    typed category ids (expense = `category_id`, income and transfer variants),
+    tagged to the current user. Shared by every test file that needs an owned
+    account."""
     headers = auth_headers()
     response = client.post("/accounts/new", json=account_payload(), headers=headers)
     assert response.status_code == 201
-    return {"id": response.json()["id"], "headers": headers, "category_id": category}
+    return {
+        "id": response.json()["id"],
+        "headers": headers,
+        "category_id": category,
+        "category_income_id": category_factory("income"),
+        "category_transfer_id": category_factory("transfer"),
+    }

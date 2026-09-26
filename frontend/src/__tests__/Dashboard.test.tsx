@@ -42,7 +42,7 @@ const operations: Operation[] = [
     date: '2026-09-01T10:00:00',
     account_id: 1,
     category_id: 1,
-    category: { id: 1, name: 'Alimentos', description: null, is_active: true },
+    category: { id: 1, name: 'Alimentos', type: 'Expense', description: null, is_active: true },
     name: 'Mercado',
   },
   {
@@ -54,12 +54,12 @@ const operations: Operation[] = [
     date: '2026-09-05T10:00:00',
     account_id: 1,
     category_id: 2,
-    category: { id: 2, name: 'Salario', description: null, is_active: true },
+    category: { id: 2, name: 'Salario', type: 'Income', description: null, is_active: true },
     name: 'Empresa',
   },
 ];
 
-const categories: Category[] = [{ id: 5, name: 'Compras', description: null, is_active: true }];
+const categories: Category[] = [{ id: 5, name: 'Compras', type: 'Expense', description: null, is_active: true }];
 
 const createdOperation: Operation = {
   id: 3,
@@ -70,7 +70,7 @@ const createdOperation: Operation = {
   date: '2026-09-10T10:00:00',
   account_id: 1,
   category_id: 5,
-  category: { id: 5, name: 'Compras', description: null, is_active: true },
+  category: { id: 5, name: 'Compras', type: 'Expense', description: null, is_active: true },
   name: 'Gym Plus',
 };
 

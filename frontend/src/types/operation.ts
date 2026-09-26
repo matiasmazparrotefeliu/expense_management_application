@@ -1,6 +1,7 @@
 export interface Category {
   id: number;
   name: string;
+  type: 'Income' | 'Expense' | 'Transfer';
   description: string | null;
   is_active: boolean;
 }

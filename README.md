@@ -112,7 +112,7 @@ Los cuatro módulos funcionales expuestos por la API son: **users** (usuarios y 
 
 | Método | Path | Auth | Descripción |
 |---|---|---|---|
-| GET | `/categories/` | No | Lista el catálogo de categorías activas |
+| GET | `/categories/` | No | Lista el catálogo de categorías activas (cada una vinculada a un tipo: `Expense`/`Income`/`Transfer`) |
 
 ### Operations (`/operations`)
 
@@ -120,9 +120,9 @@ Los cuatro módulos funcionales expuestos por la API son: **users** (usuarios y 
 |---|---|---|---|
 | GET | `/operations/` | Sí | Lista todas las operaciones de las cuentas del usuario autenticado |
 | GET | `/operations/{id}` | Sí | Obtiene una operación por id, dentro de las cuentas del usuario |
-| POST | `/operations/new` | Sí | Crea una operación (`concept`, `amount`, `type`, `account_id`, `category_id`) y actualiza el balance de la cuenta |
+| POST | `/operations/new` | Sí | Crea una operación (`concept`, `amount`, `type`, `account_id`, `category_id`) y actualiza el balance de la cuenta. La categoría debe corresponder al `type` de la operación |
 
-`type` acepta `income`/`expense` (o sus equivalentes en español `ingreso`/`egreso`).
+`type` acepta `income`/`expense`/`transfer` (o sus equivalentes en español `ingreso`/`egreso`/`transferencia`).
 
 ### Root
 
@@ -142,7 +142,7 @@ El esquema se crea automáticamente mediante `Base.metadata.create_all` al inici
 
 - **User**: usuario del sistema (`name`, `email`, `password`, `is_active`). No almacena balance directamente.
 - **Account**: cuenta perteneciente a un usuario (`name`, `currency`, `balance`, `is_active`). Un usuario puede tener múltiples cuentas.
-- **Category**: catálogo de categorías (`name`, `description`, `is_active`) usado para clasificar operaciones.
+- **Category**: catálogo de categorías (`name`, `type` — `Expense`/`Income`/`Transfer` —, `description`, `is_active`) usado para clasificar operaciones.
 - **Operation**: registro de ingreso o egreso (`concept`, `amount`, `type`, `currency`, `date`), asociado a una cuenta y una categoría.
 
 **Relaciones**: `User` (1) → `Account` (N) → `Operation` (N) → `Category` (1).
