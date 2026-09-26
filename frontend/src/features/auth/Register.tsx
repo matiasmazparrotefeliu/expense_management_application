@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema, type RegisterFormData } from './authSchema';
@@ -12,7 +11,6 @@ import { User, Mail, Lock } from 'lucide-react';
 export function Register() {
   const { register, error } = useAuth();
   const navigate = useNavigate();
-  const [localError, setLocalError] = useState<string | null>(null);
 
   const {
     register: registerField,
@@ -28,11 +26,9 @@ export function Register() {
       await register(data);
       navigate('/login', { replace: true });
     } catch {
-      setLocalError('Error al registrarse');
+      // AuthProvider already sets the specific message in context.
     }
   };
-
-  const displayError = localError || error;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -43,7 +39,7 @@ export function Register() {
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-          {displayError && <Alert message={displayError} />}
+          {error && <Alert message={error} />}
           <div className="rounded-md shadow-sm -space-y-px">
             <Input
               label="Nombre completo"
