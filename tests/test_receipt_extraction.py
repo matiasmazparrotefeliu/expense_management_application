@@ -1,14 +1,14 @@
 """In-process unit tests for the receipt text extractor and AI response structuring.
 
-These run without the Docker container and without touching any database: the
-provider HTTP call is never executed (only pure helpers are exercised), so no
-API key is required."""
+These are pure-helper tests: the provider HTTP call is never executed and no
+database is touched, so no API key is required and they import the same `src.*`
+modules the in-process app uses (a single module identity)."""
 
 import pytest
 from fastapi import HTTPException
 
-from backend.src.core.receipt_text import ReceiptTextExtractor
-from backend.src.services.receipt_service import ReceiptService
+from src.core.receipt_text import ReceiptTextExtractor
+from src.services.receipt_service import ReceiptService
 
 CATEGORY_OPTIONS = [
     {"id": 1, "name": "sueldo"},
