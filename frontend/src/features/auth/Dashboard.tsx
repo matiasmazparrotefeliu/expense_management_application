@@ -24,6 +24,12 @@ const OPERATION_TYPES: { value: OperationTypeInput; label: string }[] = [
   { value: 'transferencia', label: 'Transferencia' },
 ];
 
+const OPERATION_TYPE_TO_CATEGORY: Record<OperationTypeInput, Category['type']> = {
+  ingreso: 'Income',
+  egreso: 'Expense',
+  transferencia: 'Transfer',
+};
+
 const CURRENCIES = ['USD', 'ARS'];
 
 function formatCurrency(amount: number, currency: string): string {
@@ -109,6 +115,23 @@ export function Dashboard() {
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [operations, selectedAccountId]
   );
+
+  const filteredCategories = useMemo(
+    () =>
+      categories.filter(
+        (category) => category.type === OPERATION_TYPE_TO_CATEGORY[newOperationType]
+      ),
+    [categories, newOperationType]
+  );
+
+  useEffect(() => {
+    setNewOperationCategoryId((prev) => {
+      const current = Number(prev);
+      const stillValid = filteredCategories.some((category) => category.id === current);
+      if (stillValid) return prev;
+      return filteredCategories.length > 0 ? String(filteredCategories[0].id) : '';
+    });
+  }, [filteredCategories, newOperationType]);
 
   const operationAmount = parseAmount(newOperationAmount);
   const canSubmitOperation =
@@ -310,8 +333,10 @@ export function Dashboard() {
                   <label htmlFor="operation-category" className="block text-sm font-medium text-gray-700 mb-1">
                     Categoría
                   </label>
-                  {categories.length === 0 ? (
-                    <p className="text-sm text-gray-500">No hay categorías disponibles.</p>
+                  {filteredCategories.length === 0 ? (
+                    <p className="text-sm text-gray-500">
+                      No hay categorías para este tipo de operación.
+                    </p>
                   ) : (
                     <select
                       id="operation-category"
@@ -319,7 +344,7 @@ export function Dashboard() {
                       onChange={(event) => setNewOperationCategoryId(event.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     >
-                      {categories.map((category) => (
+                      {filteredCategories.map((category) => (
                         <option key={category.id} value={category.id}>
                           {category.name}
                         </option>
