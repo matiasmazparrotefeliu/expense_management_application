@@ -1,16 +1,6 @@
 import pytest
 
 
-@pytest.fixture
-def account(client, auth_headers, category):
-    """Create an account via the API and return its id, tagged to the current user."""
-    headers = auth_headers()
-    response = client.post("/accounts/new", json={"name": "Home", "currency": "USD"}, headers=headers)
-    assert response.status_code == 201
-    account_id = response.json()["id"]
-    return {"id": account_id, "headers": headers, "category_id": category}
-
-
 def test_create_expense_operation(client, account):
     funded = client.post(
         "/operations/new",
@@ -60,18 +50,42 @@ def test_balance_reflects_operations(client, account):
     )
 
     accounts = client.get("/accounts/", headers=headers).json()
-    assert accounts[0]["balance"] == 700.0
+    assert accounts[0]["balance"] == 1100.0
 
 
-def test_expense_over_balance_returns_400(client, account):
+@pytest.mark.parametrize(
+    "amount,op_type",
+    [
+        pytest.param(400, "egreso", id="egreso-equal-to-balance"),
+        pytest.param(500, "egreso", id="egreso-over-balance"),
+        pytest.param(400, "transfer", id="transfer-equal-to-balance"),
+        pytest.param(500, "transfer", id="transfer-over-balance"),
+    ],
+)
+def test_debit_requires_balance_strictly_greater_than_amount(client, account, amount, op_type):
     response = client.post(
         "/operations/new",
-        json={"concept": "Too much", "amount": 500, "type": "egreso", "account_id": account["id"], "category_id": account["category_id"]},
+        json={"concept": "Too much", "amount": amount, "type": op_type, "account_id": account["id"], "category_id": account["category_id"]},
         headers=account["headers"],
     )
 
     assert response.status_code == 400
     assert "Insufficient balance" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    "amount",
+    [0, -100],
+    ids=["zero-amount", "negative-amount"],
+)
+def test_operation_with_non_positive_amount_returns_422(client, account, amount):
+    response = client.post(
+        "/operations/new",
+        json={"concept": "Bad amount", "amount": amount, "type": "ingreso", "account_id": account["id"], "category_id": account["category_id"]},
+        headers=account["headers"],
+    )
+
+    assert response.status_code == 422
 
 
 def test_operation_with_invalid_type_returns_400(client, account):
@@ -181,7 +195,7 @@ def test_transfer_operation_defaults_nombre_to_other_and_debits_balance(client, 
     assert operation["name"] == "Other"
 
     accounts = client.get("/accounts/", headers=account["headers"]).json()
-    assert accounts[0]["balance"] == 400.0
+    assert accounts[0]["balance"] == 800.0
 
 
 def test_transfer_operation_with_name_keeps_given_value(client, account):
@@ -208,7 +222,7 @@ def test_transfer_operation_with_name_keeps_given_value(client, account):
     assert response.json()["name"] == "Juan Perez"
 
 
-def test_operation_with_inactive_category_returns_400(client, account, category):
+def test_operation_with_inactive_category_returns_400(client, account):
     response = client.post(
         "/operations/new",
         json={"concept": "Groceries", "amount": 10, "type": "egreso", "account_id": account["id"], "category_id": 999999},
@@ -219,14 +233,8 @@ def test_operation_with_inactive_category_returns_400(client, account, category)
     assert "does not exist or is inactive" in response.json()["detail"]
 
 
-def test_operation_on_other_users_account_returns_403(client, account):
-    other = client.post(
-        "/users/new",
-        json={"name": "intruder", "email": "intruder@example.com", "password": "secret"},
-    )
-    assert other.status_code == 201
-    login = client.post("/users/login", json={"email": "intruder@example.com", "password": "secret"})
-    other_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+def test_operation_on_other_users_account_returns_403(client, account, auth_headers):
+    other_headers = auth_headers(name="intruder", email="intruder@example.com")
 
     response = client.post(
         "/operations/new",
@@ -238,13 +246,8 @@ def test_operation_on_other_users_account_returns_403(client, account):
     assert "does not belong" in response.json()["detail"]
 
 
-def test_get_operations_filters_by_user(client, account):
-    other = client.post(
-        "/users/new",
-        json={"name": "stranger", "email": "stranger@example.com", "password": "secret"},
-    )
-    login = client.post("/users/login", json={"email": "stranger@example.com", "password": "secret"})
-    other_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+def test_get_operations_filters_by_user(client, account, auth_headers):
+    other_headers = auth_headers(name="stranger", email="stranger@example.com")
 
     client.post(
         "/operations/new",
@@ -257,3 +260,36 @@ def test_get_operations_filters_by_user(client, account):
 
     assert len(mine) == 1
     assert others == []
+
+
+def test_get_single_operation_returns_own_operation(client, account):
+    created = client.post(
+        "/operations/new",
+        json={"concept": "Salary", "amount": 100, "type": "ingreso", "account_id": account["id"], "category_id": account["category_id"]},
+        headers=account["headers"],
+    ).json()
+
+    response = client.get(f"/operations/{created['id']}", headers=account["headers"])
+
+    assert response.status_code == 200
+    assert response.json()["concept"] == "Salary"
+    assert response.json()["amount"] == 100.0
+
+
+def test_get_single_operation_from_other_user_returns_404(client, account, auth_headers):
+    created = client.post(
+        "/operations/new",
+        json={"concept": "Private", "amount": 100, "type": "ingreso", "account_id": account["id"], "category_id": account["category_id"]},
+        headers=account["headers"],
+    ).json()
+    other_headers = auth_headers(name="snooper", email="snooper@example.com")
+
+    response = client.get(f"/operations/{created['id']}", headers=other_headers)
+
+    assert response.status_code == 404
+
+
+def test_get_single_operation_nonexistent_returns_404(client, account):
+    response = client.get("/operations/999999", headers=account["headers"])
+
+    assert response.status_code == 404

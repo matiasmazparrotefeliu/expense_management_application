@@ -1,7 +1,7 @@
 import jwt
 import pytest
 
-from backend.src.auth.security import ALGORITHM, SECRET_KEY
+from src.auth.security import ALGORITHM, SECRET_KEY
 
 USER_PAYLOAD = {
     "name": "matute92",
@@ -29,26 +29,32 @@ def test_register_creates_user(client):
     assert "password" not in user
 
 
-def test_register_missing_fields_returns_422(client):
-    invalid_payloads = [
-        {"email": "a@b.com", "password": "secret"},
-        {"name": "noemail", "password": "secret"},
-        {"name": "nopass", "email": "a@b.com"},
-    ]
-    for payload in invalid_payloads:
-        response = client.post("/users/new", json=payload)
-        assert response.status_code == 422, payload
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param({"email": "a@b.com", "password": "secret"}, id="missing-name"),
+        pytest.param({"name": "noemail", "password": "secret"}, id="missing-email"),
+        pytest.param({"name": "nopass", "email": "a@b.com"}, id="missing-password"),
+    ],
+)
+def test_register_missing_fields_returns_422(client, payload):
+    response = client.post("/users/new", json=payload)
+
+    assert response.status_code == 422
 
 
-def test_register_empty_fields_returns_400(client):
-    invalid_payloads = [
-        {"name": "", "email": "a@b.com", "password": "secret"},
-        {"name": "noemail", "email": "", "password": "secret"},
-        {"name": "nopass", "email": "a@b.com", "password": ""},
-    ]
-    for payload in invalid_payloads:
-        response = client.post("/users/new", json=payload)
-        assert response.status_code == 400, payload
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param({"name": "", "email": "a@b.com", "password": "secret"}, id="empty-name"),
+        pytest.param({"name": "noemail", "email": "", "password": "secret"}, id="empty-email"),
+        pytest.param({"name": "nopass", "email": "a@b.com", "password": ""}, id="empty-password"),
+    ],
+)
+def test_register_empty_fields_returns_400(client, payload):
+    response = client.post("/users/new", json=payload)
+
+    assert response.status_code == 400
 
 
 def test_register_duplicate_user_returns_409(client):
