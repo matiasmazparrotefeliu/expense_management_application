@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginFormData } from './authSchema';
@@ -12,7 +11,6 @@ import { Mail, Lock } from 'lucide-react';
 export function Login() {
   const { login, error } = useAuth();
   const navigate = useNavigate();
-  const [localError, setLocalError] = useState<string | null>(null);
 
   const {
     register,
@@ -28,11 +26,9 @@ export function Login() {
       await login(data);
       navigate('/', { replace: true });
     } catch {
-      setLocalError('Error al iniciar sesión');
+      // AuthProvider already sets the specific message in context.
     }
   };
-
-  const displayError = localError || error;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -43,7 +39,7 @@ export function Login() {
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-          {displayError && <Alert message={displayError} />}
+          {error && <Alert message={error} />}
           <div className="rounded-md shadow-sm -space-y-px">
             <Input
               label="Email"

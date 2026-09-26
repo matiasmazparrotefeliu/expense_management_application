@@ -72,8 +72,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const result = await loginApi(data);
       dispatch({ type: 'LOGIN_SUCCESS', payload: { user: result.user, token: result.token } });
-    } catch {
-      dispatch({ type: 'SET_ERROR', payload: 'Error al iniciar sesión' });
+    } catch (err) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      const message =
+        status === 404
+          ? 'No existe un usuario registrado con ese email'
+          : status === 400
+            ? 'Email o contraseña incorrectos'
+            : 'Error al iniciar sesión';
+      dispatch({ type: 'SET_ERROR', payload: message });
+      throw err;
     }
   };
 
@@ -90,6 +98,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           ? 'Ya existe un usuario registrado con ese nombre o email'
           : 'Error al registrarse';
       dispatch({ type: 'SET_ERROR', payload: message });
+      throw err;
     }
   };
 
