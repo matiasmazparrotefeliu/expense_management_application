@@ -9,17 +9,7 @@ from fastapi.responses import JSONResponse
 
 from ..models import Operation, OperationType, Account, Category
 from ..schemas import CreateOperation
-
-# Accepts both the Spanish and English spellings the client historically sent,
-# so existing callers don't break when this was tightened to an exact match.
-TYPE_ALIASES = {
-    'egreso': OperationType.expense,
-    'ingreso': OperationType.income,
-    'expense': OperationType.expense,
-    'income': OperationType.income,
-    'transferencia': OperationType.transfer,
-    'transfer': OperationType.transfer,
-}
+from ..core.operation_types import normalize_operation_type
 
 class OperationService():
     """Wraps the `Operation` queries and the balance-affecting create flow
@@ -30,13 +20,10 @@ class OperationService():
 
     def _normalize_type(self, raw_type: str) -> OperationType:
         """Resolve a client-supplied type string to an `OperationType`, 400 if unrecognized."""
-        op_type = TYPE_ALIASES.get(raw_type.lower())
-        if op_type is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Not valid operation type, you must enter one of {sorted(TYPE_ALIASES.keys())}",
-            )
-        return op_type
+        try:
+            return normalize_operation_type(raw_type)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     def get_owned_account(self, user_id: int, account_id: int, lock: bool = False) -> Account:
         """Fetch an account enforcing ownership: 404 when missing, 403 when it belongs
