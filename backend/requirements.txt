@@ -11,8 +11,4 @@ cryptography
 alembic
 httpx
 pytest
-python-multipart
-pypdf
-pytesseract
-Pillow
 openai
