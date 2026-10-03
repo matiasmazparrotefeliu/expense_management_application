@@ -70,6 +70,7 @@ Los tests se ejecutan contra el contenedor Docker corriendo (hacen peticiones HT
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Componentes usados para construir la conexión MySQL si `DB_URL` no está definido |
 | `SECRET_KEY` | Clave usada para firmar los tokens JWT |
 | `SUPPORTED_CURRENCIES` | Lista de monedas soportadas separadas por coma (por defecto `USD,ARS`) |
+| `API_URL`, `API_KEY`, `AI_MODEL` | Proveedor LLM compatible con OpenAI para `from-text` (sin configurar, devuelve 503) |
 
 ## Módulos y estructura del proyecto
 
@@ -121,8 +122,11 @@ Los cuatro módulos funcionales expuestos por la API son: **users** (usuarios y 
 | GET | `/operations/` | Sí | Lista todas las operaciones de las cuentas del usuario autenticado |
 | GET | `/operations/{id}` | Sí | Obtiene una operación por id, dentro de las cuentas del usuario |
 | POST | `/operations/new` | Sí | Crea una operación (`concept`, `amount`, `type`, `account_id`, `category_id`) y actualiza el balance de la cuenta. La categoría debe corresponder al `type` de la operación |
+| POST | `/operations/from-text` | Sí | Extrae los datos de una operación a partir de una narración en texto libre (`text` + `account_id`) usando IA; devuelve un preview editable (`concept/amount/currency/type/category_id/name`) que no se persiste |
 
 `type` acepta `income`/`expense`/`transfer` (o sus equivalentes en español `ingreso`/`egreso`/`transferencia`).
+
+**Carga asistida por IA**: `from-text` envía la narración del usuario a un proveedor LLM compatible con OpenAI, que devuelve JSON estructurado (`concept/amount/currency/type/name/category`), validado contra el catálogo de categorías con los mensajes de error correspondientes en caso de datos inválidos o moneda no soportada. El frontend muestra el resultado en un preview editable para que el usuario lo valide y lo confirme a través de `POST /operations/new`, donde se persiste con las mismas reglas que una operación manual (balance, ownership, moneda). Requiere `API_URL` + `API_KEY` configurados (ver `AGENTS.md`).
 
 ### Root
 

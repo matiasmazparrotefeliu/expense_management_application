@@ -1,2 +1,1 @@
 from .currencies import SUPPORTED_CURRENCIES, validate_supported_currency
-from .receipt_text import ReceiptTextExtractor

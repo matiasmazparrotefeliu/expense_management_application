@@ -8,11 +8,6 @@ ENV PYTHONUNBUFFERED=1 \
 # Establece el directorio de trabajo en /app
 WORKDIR /app
 
-# OCR de comprobantes (pytesseract necesita el binario + idiomas spa/eng)
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-spa && \
-    rm -rf /var/lib/apt/lists/*
-
 # Copia los archivos requirements.txt al contenedor
 COPY ./requirements.txt /app/requirements.txt
 
