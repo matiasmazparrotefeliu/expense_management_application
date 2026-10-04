@@ -3,6 +3,7 @@ import axios from 'axios';
 import type { AuthState, AuthAction, User } from '../../types/auth';
 import type { TokenResponse } from '../../types/auth';
 import { login as loginApi, register as registerApi, logout as logoutApi } from '../../api/authApi';
+import { UNAUTHORIZED_EVENT } from '../../api/client';
 
 const TOKEN_KEY = 'access_token';
 const USER_KEY = 'user';
@@ -65,6 +66,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } else {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      dispatch({ type: 'LOGOUT' });
+    };
+    window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
   }, []);
 
   const login = async (data: { email: string; password: string }) => {
