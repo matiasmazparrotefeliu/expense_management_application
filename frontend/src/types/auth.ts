@@ -35,6 +35,13 @@ export interface RegisterPayload {
   password: string;
 }
 
+export interface CreateAccountPayload {
+  name: string;
+  currency: string;
+  balance: number;
+  bank: string;
+}
+
 export interface AuthState {
   user: User | null;
   token: string | null;

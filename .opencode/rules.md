@@ -66,3 +66,34 @@
 1. **No Hardcoding**: Variables de entorno manejadas exclusivamente vía `.env` (`pydantic-settings` en backend y `import.meta.env` / `VITE_` en frontend)[cite: 2, 3].
 2. **Encriptación**: Las contraseñas de los usuarios deben hashearse obligatoriamente antes de guardarse en la tabla `users`.
 3. **Mantenimiento de Integridad**: Respetar las restricciones `RESTRICT` en `Category` para evitar eliminar categorías asociadas a operaciones existentes.
+
+---
+
+## 6. Buenas Prácticas de Desarrollo y Clean Architecture
+
+### Principios Generales de Clean Architecture
+- **Independencia de Frameworks e Infraestructura**: La lógica de negocio (Casos de Uso / Servicios) debe estar desacoplada de los detalles de entrega (FastAPI, React) y persistencia (SQLAlchemy, Drivers BD).
+- **Inversión de Dependencias (DIP)**: Los módulos de alto nivel (negocio) no deben depender de módulos de bajo nivel (detalles/infraestructura); ambos deben depender de abstracciones/interfaces.
+- **Flujo de Dependencias Unidireccional**: Las dependencias deben apuntar siempre hacia adentro (UI / API -> Servicios / Casos de Uso -> Modelos de Dominio / Entidades).
+
+---
+
+### Buenas Prácticas en Backend (Python / FastAPI / SQLAlchemy / Pydantic)
+- **Separación de Responsabilidades**:
+  - `api/`: Solo manejo de peticiones HTTP, parseo de parámetros, códigos de estado HTTP y respuestas[cite: 1].
+  - `services/`: Contiene la lógica de negocio pura y la orquestación de operaciones (ej. cálculo de balances, validaciones financieras).
+  - `schemas/`: Modelos Pydantic dedicados exclusivamente a la transferencia de datos (DTOs de Request/Response)[cite: 1].
+  - `models/`: Definición estricta de la persistencia ORM de SQLAlchemy[cite: 1].
+- **Manejo de Excepciones**: No usar bloques `try/except` genéricos ni silenciar errores con `pass`. Lanza excepciones de dominio específicas en la capa de servicio y mapéalas a respuestas HTTP en los endpoints de FastAPI.
+- **Tipado e Inmutabilidad**: Usar *type hints* estrictos en todas las funciones y métodos. Preferir objetos inmutables o esquemas de lectura explícitos para respuestas.
+- **Operaciones Atómicas**: Toda transacción que involucre múltiples cambios en base de datos (como registrar una `Operation` y actualizar el `balance` de `Account`) debe ejecutarse dentro de un bloque de transacción atómico (`db.commit()` / `rollback()`).
+
+---
+
+### Buenas Prácticas en Frontend (React / TypeScript / Vite)
+- **Desacoplamiento de UI y Lógica**:
+  - Los componentes de UI (`components/`) deben ser lo más puros y tontos (*presentational*) posible[cite: 2].
+  - La lógica de estado, llamadas a la API y efectos deben aislarse en Custom Hooks (`hooks/`) o Servicios (`services/` / `api/`)[cite: 2].
+- **Tipado Estricto**: Prohibido el uso de `any`. Definir e importar los tipos en `types/` asegurando la sincronización de contratos con las respuestas Pydantic del backend[cite: 2].
+- **Manejo de Estado Remoto y Caching**: Centralizar la captura de datos, manejo de estados de carga (`isLoading`), errores y revalidaciones usando herramientas como `@tanstack/react-query` o hooks personalizados centralizados en la capa de API[cite: 2].
+- **Principios de Componentización**: Mantener componentes pequeños, cohesivos y legibles (un solo propósito por componente). Reutilizar primitives de UI.

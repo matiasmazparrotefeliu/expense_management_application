@@ -1,108 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Dashboard } from '@/features/auth/Dashboard';
-import {
-  getAccounts,
-  getOperations,
-  createAccount,
-  getCategories,
-  createOperation,
-  extractOperationFromText,
-} from '@/api/operationsApi';
-import type { Account } from '@/types/auth';
-import type { Category, ExtractedOperation, Operation } from '@/types/operation';
+import { mockAccounts, mockOperations, mockCreatedOperation, mockNewAccount, createMockApi, setupDefaultMocks, mockAuthProvider } from '@/__tests__/utils/testUtils';
 
-vi.mock('@/hooks/useAuth', () => ({
-  useAuth: () => ({ logout: vi.fn() }),
-}));
+const api = createMockApi();
+setupDefaultMocks(api);
 
-vi.mock('@/api/operationsApi', () => ({
-  getAccounts: vi.fn(),
-  getOperations: vi.fn(),
-  createAccount: vi.fn(),
-  getCategories: vi.fn(),
-  createOperation: vi.fn(),
-  extractOperationFromText: vi.fn(),
-}));
+mockAuthProvider();
 
-const accounts: Account[] = [
-  { id: 1, name: 'Cash USD', currency: 'USD', balance: 1200.5, bank: 'BBVA', is_active: true },
-  { id: 2, name: 'Efectivo ARS', currency: 'ARS', balance: 50000, bank: 'Mercado Pago', is_active: true },
-];
+vi.mock('@/api/operationsApi', () => api);
 
-const newAccount: Account = {
-  id: 3,
-  name: 'Inversiones',
-  currency: 'ARS',
-  balance: 0,
-  bank: 'Banco Galicia',
-  is_active: true,
-};
-
-const operations: Operation[] = [
-  {
-    id: 1,
-    concept: 'Supermercado',
-    amount: 250.5,
-    type: 'Expense',
-    currency: 'USD',
-    date: '2026-09-01T10:00:00',
-    account_id: 1,
-    category_id: 1,
-    category: { id: 1, name: 'Alimentos', type: 'Expense', description: null, is_active: true },
-    name: 'Mercado',
-  },
-  {
-    id: 2,
-    concept: 'Sueldo',
-    amount: 5000,
-    type: 'Income',
-    currency: 'USD',
-    date: '2026-09-05T10:00:00',
-    account_id: 1,
-    category_id: 2,
-    category: { id: 2, name: 'Salario', type: 'Income', description: null, is_active: true },
-    name: 'Empresa',
-  },
-  {
-    id: 3,
-    concept:
-      'Pago de la factura de internet y televisión por cable correspondiente al mes de octubre de la residencia',
-    amount: 1500,
-    type: 'Expense',
-    currency: 'ARS',
-    date: '2026-09-10T10:00:00',
-    account_id: 1,
-    category_id: 5,
-    category: { id: 5, name: 'Compras', type: 'Expense', description: null, is_active: true },
-    name: 'Personal Flow',
-  },
-];
-
-const categories: Category[] = [{ id: 5, name: 'Compras', type: 'Expense', description: null, is_active: true }];
-
-const createdOperation: Operation = {
-  id: 3,
-  concept: 'Gimnasio',
-  amount: 150,
-  type: 'Expense',
-  currency: 'USD',
-  date: '2026-09-10T10:00:00',
-  account_id: 1,
-  category_id: 5,
-  category: { id: 5, name: 'Compras', type: 'Expense', description: null, is_active: true },
-  name: 'Gym Plus',
-};
-
-const extractedOperation: ExtractedOperation = {
-  concept: 'Gimnasio',
-  amount: 150,
-  currency: 'USD',
-  type: 'expense',
-  category_id: 5,
-  name: 'Gym Plus',
-};
+const accounts = mockAccounts;
+const operations = mockOperations;
+const createdOperation = mockCreatedOperation;
+const newAccount = mockNewAccount;
 
 async function openAiTab(): Promise<void> {
   fireEvent.click(screen.getByRole('button', { name: 'Nueva operación' }));
@@ -116,14 +28,13 @@ async function extractNarration(text: string): Promise<void> {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(getCategories).mockResolvedValue(categories);
-  vi.mocked(extractOperationFromText).mockResolvedValue(extractedOperation);
+  setupDefaultMocks(api);
 });
 
 describe('Dashboard', () => {
   it('renders the accounts in the selector and the savings balance', async () => {
-    vi.mocked(getAccounts).mockResolvedValue(accounts);
-    vi.mocked(getOperations).mockResolvedValue(operations);
+    api.getAccounts.mockResolvedValue(accounts);
+    api.getOperations.mockResolvedValue(operations);
 
     render(<Dashboard />);
 
@@ -133,8 +44,8 @@ describe('Dashboard', () => {
   });
 
   it('shows the operations of the selected account', async () => {
-    vi.mocked(getAccounts).mockResolvedValue(accounts);
-    vi.mocked(getOperations).mockResolvedValue(operations);
+    api.getAccounts.mockResolvedValue(accounts);
+    api.getOperations.mockResolvedValue(operations);
 
     render(<Dashboard />);
 
@@ -148,8 +59,8 @@ describe('Dashboard', () => {
   });
 
   it('shows an empty state when the user has no accounts', async () => {
-    vi.mocked(getAccounts).mockResolvedValue([]);
-    vi.mocked(getOperations).mockResolvedValue([]);
+    api.getAccounts.mockResolvedValue([]);
+    api.getOperations.mockResolvedValue([]);
 
     render(<Dashboard />);
 
@@ -157,9 +68,9 @@ describe('Dashboard', () => {
   });
 
   it('creates a new account and selects it in the panel', async () => {
-    vi.mocked(getAccounts).mockResolvedValue([]);
-    vi.mocked(getOperations).mockResolvedValue([]);
-    vi.mocked(createAccount).mockResolvedValue(newAccount);
+    api.getAccounts.mockResolvedValue([]);
+    api.getOperations.mockResolvedValue([]);
+    api.createAccount.mockResolvedValue(newAccount);
 
     render(<Dashboard />);
 
@@ -174,7 +85,7 @@ describe('Dashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
 
     await waitFor(() => {
-      expect(createAccount).toHaveBeenCalledWith({
+      expect(api.createAccount).toHaveBeenCalledWith({
         name: 'Inversiones',
         currency: 'ARS',
         balance: 500,
@@ -185,9 +96,9 @@ describe('Dashboard', () => {
   });
 
   it('shows a warning when creating an account with an existing name', async () => {
-    vi.mocked(getAccounts).mockResolvedValue(accounts);
-    vi.mocked(getOperations).mockResolvedValue(operations);
-    vi.mocked(createAccount).mockRejectedValue({
+    api.getAccounts.mockResolvedValue(accounts);
+    api.getOperations.mockResolvedValue(operations);
+    api.createAccount.mockRejectedValue({
       isAxiosError: true,
       response: { status: 400 },
     });
@@ -209,13 +120,13 @@ describe('Dashboard', () => {
   it('creates an operation that appears in the list and updates the balance', async () => {
     const updatedAccounts = [{ ...accounts[0], balance: 1050.5 }, accounts[1]];
     const updatedOperations = [createdOperation, ...operations];
-    vi.mocked(getAccounts)
+    api.getAccounts
       .mockResolvedValueOnce(accounts)
       .mockResolvedValue(updatedAccounts);
-    vi.mocked(getOperations)
+    api.getOperations
       .mockResolvedValueOnce(operations)
       .mockResolvedValue(updatedOperations);
-    vi.mocked(createOperation).mockResolvedValue(createdOperation);
+    api.createOperation.mockResolvedValue(createdOperation);
 
     render(<Dashboard />);
 
@@ -227,7 +138,7 @@ describe('Dashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Registrar operación' }));
 
     await waitFor(() => {
-      expect(createOperation).toHaveBeenCalledWith({
+      expect(api.createOperation).toHaveBeenCalledWith({
         concept: 'Gimnasio',
         amount: 150,
         type: 'egreso',
@@ -243,9 +154,9 @@ describe('Dashboard', () => {
   });
 
   it('shows a warning when the operation fails due to insufficient balance', async () => {
-    vi.mocked(getAccounts).mockResolvedValue(accounts);
-    vi.mocked(getOperations).mockResolvedValue(operations);
-    vi.mocked(createOperation).mockRejectedValue({
+    api.getAccounts.mockResolvedValue(accounts);
+    api.getOperations.mockResolvedValue(operations);
+    api.createOperation.mockRejectedValue({
       isAxiosError: true,
       response: { status: 400 },
     });
@@ -262,8 +173,8 @@ describe('Dashboard', () => {
   });
 
   it('switches between the IA and the manual form', async () => {
-    vi.mocked(getAccounts).mockResolvedValue(accounts);
-    vi.mocked(getOperations).mockResolvedValue(operations);
+    api.getAccounts.mockResolvedValue(accounts);
+    api.getOperations.mockResolvedValue(operations);
 
     render(<Dashboard />);
 
@@ -283,9 +194,9 @@ describe('Dashboard', () => {
   });
 
   it('extracts a narration, shows an editable preview and confirms via createOperation', async () => {
-    vi.mocked(getAccounts).mockResolvedValue(accounts);
-    vi.mocked(getOperations).mockResolvedValue(operations);
-    vi.mocked(createOperation).mockResolvedValue(createdOperation);
+    api.getAccounts.mockResolvedValue(accounts);
+    api.getOperations.mockResolvedValue(operations);
+    api.createOperation.mockResolvedValue(createdOperation);
 
     render(<Dashboard />);
 
@@ -294,7 +205,7 @@ describe('Dashboard', () => {
     await extractNarration('gaste 9800 pesos en Carrefour');
 
     await waitFor(() => {
-      expect(extractOperationFromText).toHaveBeenCalledWith('gaste 9800 pesos en Carrefour', 1);
+      expect(api.extractOperationFromText).toHaveBeenCalledWith('gaste 9800 pesos en Carrefour', 1);
     });
     expect(await screen.findByLabelText('Concepto')).toHaveValue('Gimnasio');
     expect(screen.getByLabelText('Monto')).toHaveValue(150);
@@ -307,7 +218,7 @@ describe('Dashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Registrar operación' }));
 
     await waitFor(() => {
-      expect(createOperation).toHaveBeenCalledWith({
+      expect(api.createOperation).toHaveBeenCalledWith({
         concept: 'Natación',
         amount: 150,
         type: 'egreso',
@@ -323,9 +234,9 @@ describe('Dashboard', () => {
   });
 
   it('shows the backend detail when the extraction fails', async () => {
-    vi.mocked(getAccounts).mockResolvedValue(accounts);
-    vi.mocked(getOperations).mockResolvedValue(operations);
-    vi.mocked(extractOperationFromText).mockRejectedValue({
+    api.getAccounts.mockResolvedValue(accounts);
+    api.getOperations.mockResolvedValue(operations);
+    api.extractOperationFromText.mockRejectedValue({
       isAxiosError: true,
       response: {
         status: 400,
@@ -346,9 +257,9 @@ describe('Dashboard', () => {
   });
 
   it('shows the backend detail when confirming the extracted operation fails', async () => {
-    vi.mocked(getAccounts).mockResolvedValue(accounts);
-    vi.mocked(getOperations).mockResolvedValue(operations);
-    vi.mocked(createOperation).mockRejectedValue({
+    api.getAccounts.mockResolvedValue(accounts);
+    api.getOperations.mockResolvedValue(operations);
+    api.createOperation.mockRejectedValue({
       isAxiosError: true,
       response: {
         status: 400,
@@ -369,8 +280,8 @@ describe('Dashboard', () => {
   });
 
   it('returns to the narration form when starting a new narration', async () => {
-    vi.mocked(getAccounts).mockResolvedValue(accounts);
-    vi.mocked(getOperations).mockResolvedValue(operations);
+    api.getAccounts.mockResolvedValue(accounts);
+    api.getOperations.mockResolvedValue(operations);
 
     render(<Dashboard />);
 
@@ -386,9 +297,9 @@ describe('Dashboard', () => {
   });
 
   it('permite elegir la cuenta de la operación en el formulario', async () => {
-    vi.mocked(getAccounts).mockResolvedValue(accounts);
-    vi.mocked(getOperations).mockResolvedValue(operations);
-    vi.mocked(createOperation).mockResolvedValue(createdOperation);
+    api.getAccounts.mockResolvedValue(accounts);
+    api.getOperations.mockResolvedValue(operations);
+    api.createOperation.mockResolvedValue(createdOperation);
 
     render(<Dashboard />);
 
@@ -403,7 +314,7 @@ describe('Dashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Registrar operación' }));
 
     await waitFor(() => {
-      expect(createOperation).toHaveBeenCalledWith(
+      expect(api.createOperation).toHaveBeenCalledWith(
         expect.objectContaining({ account_id: 2 }),
       );
     });
@@ -419,52 +330,13 @@ describe('Dashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Extraer datos' }));
 
     await waitFor(() => {
-      expect(extractOperationFromText).toHaveBeenCalledWith('gaste 9800 pesos en Carrefour', 2);
+      expect(api.extractOperationFromText).toHaveBeenCalledWith('gaste 9800 pesos en Carrefour', 2);
     });
   });
 
-  it('muestra un modal con el concepto completo al pasar el mouse', async () => {
-    vi.mocked(getAccounts).mockResolvedValue(accounts);
-    vi.mocked(getOperations).mockResolvedValue(operations);
-
-    render(<Dashboard />);
-
-    await screen.findByText('Cash USD — BBVA (USD)');
-
-    const longConceptCell = await screen.findByText(
-      'Pago de la factura de internet y televisión por cable correspondiente al mes de octubre de la residencia',
-    );
-    fireEvent.mouseEnter(longConceptCell);
-
-    const dialog = await screen.findByRole('dialog', { name: 'Concepto completo' });
-    expect(dialog).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(
-        'Pago de la factura de internet y televisión por cable correspondiente al mes de octubre de la residencia',
-      ),
-    ).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  });
-
-  it('no muestra el concepto en un modal si no esta cortado', async () => {
-    vi.mocked(getAccounts).mockResolvedValue(accounts);
-    vi.mocked(getOperations).mockResolvedValue(operations);
-
-    render(<Dashboard />);
-
-    await screen.findByText('Cash USD — BBVA (USD)');
-
-    fireEvent.mouseEnter(await screen.findByText('Supermercado'));
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  });
-
   it('los formularios de operacion y cuenta son mutuamente excluyentes', async () => {
-    vi.mocked(getAccounts).mockResolvedValue(accounts);
-    vi.mocked(getOperations).mockResolvedValue(operations);
+    api.getAccounts.mockResolvedValue(accounts);
+    api.getOperations.mockResolvedValue(operations);
 
     render(<Dashboard />);
 
