@@ -10,7 +10,7 @@ app = FastAPI()
 Base.metadata.create_all(bind=engine)
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-CORS_ORIGINS = list(dict.fromkeys([FRONTEND_URL, "http://localhost:3000", "http://frontend:3000"]))
+CORS_ORIGINS = list(dict.fromkeys([FRONTEND_URL, "http://localhost:3000", "http://frontend:3000", "https://operations-app.netlify.app/"]))
 
 app.add_middleware(LoadUserData)
 
