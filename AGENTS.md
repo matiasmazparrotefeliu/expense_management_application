@@ -21,7 +21,7 @@ FastAPI + SQLAlchemy (MySQL) expense-tracking API + React + TypeScript frontend.
 
 ## DB config
 
-`backend/src/db/config.py` prefers `DB_URL` when set (e.g. `sqlite:///./expense_app.db` or a full MySQL URL). If unset, builds `mysql+pymysql://` from `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`. SQLite engines get `connect_args={"check_same_thread": False}` automatically. `load_dotenv()` loads `.env`; `.env.example` shows both forms — `DB_URL` wins.
+`backend/src/db/config.py` differentiates environments through `APP_ENV` (`dev` default, `prod`). The connection URL is resolved with priority `DB_URL` → `DATABASE_URL` (Render's standard name); in `dev` a missing URL falls back to the legacy `DB_*` MySQL build (`DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`). In `prod` a missing URL **and** a SQLite URL are hard errors (fail-fast, so production never runs on an ephemeral SQLite file) — `prod` uses the Render PostgreSQL **internal** connection string. PostgreSQL URLs are normalized to the `psycopg2` driver (`postgres://`/`postgresql://` → `postgresql+psycopg2://`). SQLite engines get `connect_args={"check_same_thread": False}`; PostgreSQL engines get `pool_pre_ping=True` + `pool_recycle=300` (Render's free DB drops idle connections) and accept an optional `DB_SSL_MODE` (e.g. `require`) for the external URL only. `load_dotenv()` loads `.env`; `.env.example` documents both environments. Dev keeps SQLite both locally (`.env` absolute `DB_URL`) and in Docker (compose `DB_URL=sqlite:////app/data/expense_app.db`); `docker-compose*.yaml` is unchanged.
 
 ## SQLite notes
 
