@@ -10,7 +10,19 @@ app = FastAPI()
 Base.metadata.create_all(bind=engine)
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-CORS_ORIGINS = list(dict.fromkeys([FRONTEND_URL, "http://localhost:3000", "http://frontend:3000", "https://operations-app.netlify.app/"]))
+
+
+def _normalize_origin(origin: str) -> str:
+    """Strip a trailing slash: browsers send the `Origin` header without one and
+    Starlette matches `allow_origins` by exact string equality, so a stray `/`
+    (e.g. in the `FRONTEND_URL` env var) would silently disable CORS."""
+    return origin.rstrip("/")
+
+
+CORS_ORIGINS = list(dict.fromkeys(
+    _normalize_origin(origin)
+    for origin in [FRONTEND_URL, "http://localhost:3000", "http://frontend:3000"]
+))
 
 app.add_middleware(LoadUserData)
 
