@@ -44,8 +44,14 @@ class OperationService():
         return account
 
     def get_by_user(self, user_id: int):
-        """List every operation across all of the user's accounts."""
-        operations = self.db.query(Operation).join(Account).filter(Account.user_id == user_id).all()
+        """List every operation across all of the user's accounts, newest first."""
+        operations = (
+            self.db.query(Operation)
+            .join(Account)
+            .filter(Account.user_id == user_id)
+            .order_by(Operation.date.desc(), Operation.id.desc())
+            .all()
+        )
         operations_dict = [operation.to_dict() for operation in operations]
         return JSONResponse(content=operations_dict, status_code=status.HTTP_200_OK)
 
