@@ -14,13 +14,12 @@ export const createAccountSchema = z.object({
 export type CreateAccountFormData = z.infer<typeof createAccountSchema>;
 
 export const createOperationSchema = z.object({
-  concept: z.string().min(1, 'El concepto es obligatorio'),
+  concept: z.string().min(1, 'El concepto es obligatorio').max(250, 'Máximo 250 caracteres'),
   amount: z.coerce.number().gt(0, 'El monto debe ser mayor a 0'),
   type: z.enum(operationTypeEnum),
   account_id: z.coerce.number().int().positive('Cuenta inválida'),
   category_id: z.coerce.number().int().positive('Categoría inválida'),
-  name: z.string().optional(),
-  currency: z.enum(currencyEnum).optional(),
+  name: z.string().max(250, 'Máximo 250 caracteres').optional(),
 });
 
 export type CreateOperationFormData = z.infer<typeof createOperationSchema>;

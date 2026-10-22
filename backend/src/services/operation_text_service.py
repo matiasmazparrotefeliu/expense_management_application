@@ -261,6 +261,6 @@ class TextOperationService():
             "amount": round(validated.amount, 2),
             "type": validated.type,
             "category_id": matched["id"],
-            "name": name,
+            "name": name[:250] if name else None,
             "currency": validated.currency,
         }

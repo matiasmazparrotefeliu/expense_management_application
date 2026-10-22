@@ -1,21 +1,26 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createOperationSchema, type CreateOperationFormData } from '@/features/auth/formSchemas';
-import { useCategories } from '@/hooks/useCategories';
-import { useOperations } from '@/hooks/useOperations';
 import { Input } from '@/components/common/Input/Input';
 import { Button } from '@/components/common/Button/Button';
 import { Alert } from '@/components/common/Alert/Alert';
 import { AccountSelectField } from './AccountSelectField';
 import { OPERATION_TYPES, OperationTypeMapper } from '@/utils/constants';
-import type { OperationTypeInput, Category } from '@/types/operation';
+import type {
+  CreateOperationPayload,
+  Operation,
+  OperationTypeInput,
+  Category,
+} from '@/types/operation';
 import type { Account } from '@/types/auth';
 
 interface OperationFormProps {
   accounts: Account[];
+  categories: Category[];
   selectedAccountId: number | null;
   onSelectAccount: (id: number) => void;
+  onAddOperation: (data: CreateOperationPayload) => Promise<Operation>;
   onCreateOperation: () => void;
   onClose: () => void;
   show: boolean;
@@ -23,20 +28,28 @@ interface OperationFormProps {
 
 export const OperationForm = memo(function OperationForm({
   accounts,
+  categories,
   selectedAccountId,
   onSelectAccount,
+  onAddOperation,
   onCreateOperation,
   onClose,
   show,
 }: OperationFormProps) {
-  const { getCategoriesByType } = useCategories();
-  const { addOperation } = useOperations();
-
   const [operationType, setOperationType] = useState<OperationTypeInput>('egreso');
   const [creatingOperation, setCreatingOperation] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
 
-  const filteredCategories = getCategoriesByType(OperationTypeMapper.getCategoryType(OperationTypeMapper.fromInput(operationType)));
+  const operationCategoryType = OperationTypeMapper.getCategoryType(OperationTypeMapper.fromInput(operationType));
+  const filteredCategories = useMemo(
+    () =>
+      categories.filter(
+        (category: Category) => category.type === operationCategoryType && category.is_active
+      ),
+    [categories, operationCategoryType]
+  );
+
+  const selectedAccount = accounts.find((a) => a.id === selectedAccountId) ?? null;
 
   const {
     register,
@@ -54,7 +67,6 @@ export const OperationForm = memo(function OperationForm({
       account_id: selectedAccountId ?? 0,
       category_id: 0,
       name: '',
-      currency: '',
     },
   });
 
@@ -72,19 +84,21 @@ export const OperationForm = memo(function OperationForm({
     }
   }, [filteredCategories, watch, setValue]);
 
+  const typeRegister = register('type');
+
   const onSubmit = async (data: CreateOperationFormData) => {
-    if (!selectedAccountId) return;
+    if (!selectedAccountId || !selectedAccount) return;
     setCreatingOperation(true);
     setOperationError(null);
     try {
-      await addOperation({
+      await onAddOperation({
         concept: data.concept.trim(),
         amount: data.amount,
         type: data.type as OperationTypeInput,
         account_id: selectedAccountId,
         category_id: data.category_id,
+        currency: selectedAccount.currency,
         ...(data.name?.trim() ? { name: data.name.trim() } : {}),
-        ...(data.currency ? { currency: data.currency } : {}),
       });
       reset({ concept: '', amount: 0, name: '' });
       onCreateOperation();
@@ -151,12 +165,10 @@ export const OperationForm = memo(function OperationForm({
           </label>
           <select
             id="operation-type"
-            {...register('type')}
+            {...typeRegister}
             onChange={(e) => {
+              typeRegister.onChange(e);
               setOperationType(e.target.value as OperationTypeInput);
-              if (filteredCategories.length > 0) {
-                setValue('category_id', filteredCategories[0].id, { shouldValidate: true });
-              }
             }}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
@@ -175,17 +187,26 @@ export const OperationForm = memo(function OperationForm({
           {filteredCategories.length === 0 ? (
             <p className="text-sm text-gray-500">No hay categorías para este tipo de operación.</p>
           ) : (
-            <select
-              id="operation-category"
-              {...register('category_id', { valueAsNumber: true })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-              {filteredCategories.map((category: Category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+            <>
+              <select
+                id="operation-category"
+                {...register('category_id', { valueAsNumber: true })}
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                  errors.category_id ? 'border-red-500' : 'border-gray-300'
+                }`}
+              >
+                {filteredCategories.map((category: Category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              {errors.category_id && (
+                <p className="mt-1 text-sm text-red-600" role="alert">
+                  {errors.category_id.message}
+                </p>
+              )}
+            </>
           )}
         </div>
 

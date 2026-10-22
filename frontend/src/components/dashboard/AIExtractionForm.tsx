@@ -1,21 +1,27 @@
-import { memo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { extractOperationFromText } from '@/api/operationsApi';
-import { useCategories } from '@/hooks/useCategories';
-import { useOperations } from '@/hooks/useOperations';
 import { Input } from '@/components/common/Input/Input';
 import { Button } from '@/components/common/Button/Button';
 import { Alert } from '@/components/common/Alert/Alert';
 import { AccountSelectField } from './AccountSelectField';
 import { OperationForm } from './OperationForm';
-import { OPERATION_TYPES, CURRENCIES, OperationTypeMapper } from '@/utils/constants';
+import { OPERATION_TYPES, OperationTypeMapper } from '@/utils/constants';
 import { parseAmount } from '@/utils/formatters';
-import type { ExtractedOperation, OperationTypeInput, Category } from '@/types/operation';
+import type {
+  CreateOperationPayload,
+  ExtractedOperation,
+  Operation,
+  OperationTypeInput,
+  Category,
+} from '@/types/operation';
 import type { Account } from '@/types/auth';
 
 interface AIExtractionFormProps {
   accounts: Account[];
+  categories: Category[];
   selectedAccountId: number | null;
   onSelectAccount: (id: number) => void;
+  onAddOperation: (data: CreateOperationPayload) => Promise<Operation>;
   onCreateOperation: () => void;
   onClose: () => void;
   show: boolean;
@@ -23,51 +29,55 @@ interface AIExtractionFormProps {
 
 export const AIExtractionForm = memo(function AIExtractionForm({
   accounts,
+  categories,
   selectedAccountId,
   onSelectAccount,
+  onAddOperation,
   onCreateOperation,
   onClose,
   show,
 }: AIExtractionFormProps) {
-  const { getCategoriesByType } = useCategories();
-  const { addOperation } = useOperations();
-
-  const [operationMode, setOperationMode] = useState<'manual' | 'ai'>('ai');
+  const [operationMode, setOperationMode] = useState<'manual' | 'ai'>('manual');
   const [narrationText, setNarrationText] = useState('');
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
   const [extractedOperation, setExtractedOperation] = useState<ExtractedOperation | null>(null);
-  const [aiSuccess, setAiSuccess] = useState<string | null>(null);
   const [confirmingOperation, setConfirmingOperation] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
 
   const [previewConcept, setPreviewConcept] = useState('');
   const [previewAmount, setPreviewAmount] = useState('');
-  const [previewCurrency, setPreviewCurrency] = useState<string>(CURRENCIES[0]);
   const [previewType, setPreviewType] = useState<OperationTypeInput>('egreso');
   const [previewCategoryId, setPreviewCategoryId] = useState('');
   const [previewName, setPreviewName] = useState('');
 
-  const previewFilteredCategories = getCategoriesByType(OperationTypeMapper.getCategoryType(OperationTypeMapper.fromInput(previewType)));
+  const selectedAccount = accounts.find((a) => a.id === selectedAccountId) ?? null;
+
+  const previewCategoryType = OperationTypeMapper.getCategoryType(OperationTypeMapper.fromInput(previewType));
+  const previewFilteredCategories = useMemo(
+    () =>
+      categories.filter(
+        (category: Category) => category.type === previewCategoryType && category.is_active
+      ),
+    [categories, previewCategoryType]
+  );
 
   const canConfirmOperation =
-    !!selectedAccountId &&
+    !!selectedAccount &&
     !!previewConcept.trim() &&
     parseAmount(previewAmount) > 0 &&
-    !!previewCategoryId;
+    previewFilteredCategories.some((category: Category) => String(category.id) === previewCategoryId);
 
   const handleExtractOperation = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedAccountId || !narrationText.trim()) return;
     setExtracting(true);
     setExtractError(null);
-    setAiSuccess(null);
     try {
       const extracted = await extractOperationFromText(narrationText.trim(), selectedAccountId);
       setExtractedOperation(extracted);
       setPreviewConcept(extracted.concept);
       setPreviewAmount(String(extracted.amount));
-      setPreviewCurrency(extracted.currency ?? CURRENCIES[0]);
       setPreviewType(OperationTypeMapper.toInput(OperationTypeMapper.fromExtracted(extracted.type)));
       setPreviewCategoryId(String(extracted.category_id));
       setPreviewName(extracted.name ?? '');
@@ -84,29 +94,28 @@ export const AIExtractionForm = memo(function AIExtractionForm({
     setExtractedOperation(null);
     setExtractError(null);
     setConfirmError(null);
-    setAiSuccess(null);
     setNarrationText('');
   };
 
   const handleCreateOperationFromAi = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedAccountId || !extractedOperation) return;
+    if (!selectedAccount || !extractedOperation) return;
     setConfirmingOperation(true);
     setConfirmError(null);
     try {
-      await addOperation({
+      await onAddOperation({
         concept: previewConcept.trim(),
         amount: parseAmount(previewAmount),
         type: previewType,
-        account_id: selectedAccountId,
+        account_id: selectedAccount.id,
         category_id: Number(previewCategoryId),
-        currency: previewCurrency,
+        currency: selectedAccount.currency,
         ...(previewName.trim() ? { name: previewName.trim() } : {}),
       });
       setExtractedOperation(null);
       setNarrationText('');
-      setAiSuccess('Operación registrada correctamente');
       onCreateOperation();
+      onClose();
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail;
       setConfirmError(detail ?? 'No se pudo registrar la operación');
@@ -138,7 +147,6 @@ export const AIExtractionForm = memo(function AIExtractionForm({
           onClick={() => {
             setOperationMode('manual');
             setExtractError(null);
-            setAiSuccess(null);
             setConfirmError(null);
           }}
           className="w-auto"
@@ -149,7 +157,6 @@ export const AIExtractionForm = memo(function AIExtractionForm({
 
       {operationMode === 'ai' ? (
         <div className="space-y-4">
-          {aiSuccess && <Alert message={aiSuccess} variant="success" />}
           {!extractedOperation ? (
             <form onSubmit={handleExtractOperation}>
               {extractError && <Alert message={extractError} />}
@@ -219,30 +226,24 @@ export const AIExtractionForm = memo(function AIExtractionForm({
                   step="0.01"
                 />
                 <div>
-                  <label htmlFor="ai-preview-currency" className="block text-sm font-medium text-gray-700 mb-1">
-                    Moneda
-                  </label>
-                  <select
-                    id="ai-preview-currency"
-                    value={previewCurrency}
-                    onChange={(e) => setPreviewCurrency(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  >
-                    {CURRENCIES.map((currency) => (
-                      <option key={currency} value={currency}>
-                        {currency}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
                   <label htmlFor="ai-preview-type" className="block text-sm font-medium text-gray-700 mb-1">
                     Tipo
                   </label>
                   <select
                     id="ai-preview-type"
                     value={previewType}
-                    onChange={(e) => setPreviewType(e.target.value as OperationTypeInput)}
+                    onChange={(e) => {
+                      const nextType = e.target.value as OperationTypeInput;
+                      setPreviewType(nextType);
+                      const nextCategories = categories.filter(
+                        (category: Category) =>
+                          category.type === OperationTypeMapper.getCategoryType(OperationTypeMapper.fromInput(nextType)) &&
+                          category.is_active
+                      );
+                      if (nextCategories.length > 0) {
+                        setPreviewCategoryId(String(nextCategories[0].id));
+                      }
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   >
                     {OPERATION_TYPES.map((option) => (

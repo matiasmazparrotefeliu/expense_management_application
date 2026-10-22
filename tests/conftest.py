@@ -153,3 +153,22 @@ def account(client, auth_headers, category, category_factory, account_payload):
         "category_income_id": category_factory("income"),
         "category_transfer_id": category_factory("transfer"),
     }
+
+
+@pytest.fixture
+def funded_account(client, account):
+    """An `account` topped up via the canonical initial `ingreso` operation, so
+    debits (expense/transfer) and balance assertions have headroom. Canonical
+    setup instead of repeating the funding POST in every test that needs it."""
+    client.post(
+        "/operations/new",
+        json={
+            "concept": "Salary",
+            "amount": 1000,
+            "type": "ingreso",
+            "account_id": account["id"],
+            "category_id": account["category_income_id"],
+        },
+        headers=account["headers"],
+    )
+    return account

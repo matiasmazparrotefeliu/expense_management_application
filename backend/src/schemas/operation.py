@@ -42,12 +42,12 @@ class CreateOperation(BaseModel):
     amount would otherwise let a debit grow the balance instead of shrinking it.
     """
 
-    concept: str
+    concept: str = Field(min_length=1, max_length=250)
     amount: float = Field(gt=0)
     type: str
     account_id: int
     category_id: int
-    name: Optional[str] = None
+    name: Optional[str] = Field(default=None, max_length=250)
     currency: Optional[str] = None
 
     @field_validator("currency")
