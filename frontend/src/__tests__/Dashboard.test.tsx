@@ -144,6 +144,7 @@ describe('Dashboard', () => {
         type: 'egreso',
         account_id: 1,
         category_id: 5,
+        currency: 'USD',
         name: 'Gym Plus',
       });
     });
@@ -193,7 +194,7 @@ describe('Dashboard', () => {
     expect(screen.getByLabelText('Concepto')).toBeInTheDocument();
   });
 
-  it('extracts a narration, shows an editable preview and confirms via createOperation', async () => {
+  it('extracts a narration, shows an editable preview and confirms via createOperation, returning to the panel', async () => {
     api.getAccounts.mockResolvedValue(accounts);
     api.getOperations.mockResolvedValue(operations);
     api.createOperation.mockResolvedValue(createdOperation);
@@ -209,7 +210,7 @@ describe('Dashboard', () => {
     });
     expect(await screen.findByLabelText('Concepto')).toHaveValue('Gimnasio');
     expect(screen.getByLabelText('Monto')).toHaveValue(150);
-    expect(screen.getByLabelText('Moneda')).toHaveValue('USD');
+    expect(screen.queryByLabelText('Moneda')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Tipo')).toHaveValue('egreso');
     expect(screen.getByLabelText('Categoría')).toHaveValue('5');
     expect(screen.getByLabelText('Nombre (opcional)')).toHaveValue('Gym Plus');
@@ -229,8 +230,32 @@ describe('Dashboard', () => {
       });
     });
 
-    expect(await screen.findByText('Operación registrada correctamente')).toBeInTheDocument();
-    expect(screen.getByLabelText('Mensaje de la operación')).toBeInTheDocument();
+    expect(await screen.findByText('Balance total de ahorros')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Mensaje de la operación')).not.toBeInTheDocument();
+  });
+
+  it('confirms the extracted operation against the account chosen in the preview, with that account currency', async () => {
+    api.getAccounts.mockResolvedValue(accounts);
+    api.getOperations.mockResolvedValue(operations);
+    api.createOperation.mockResolvedValue(createdOperation);
+
+    render(<Dashboard />);
+
+    await screen.findByText('Cash USD — BBVA (USD)');
+    await openAiTab();
+    await extractNarration('gaste 9800 pesos en Carrefour');
+
+    await screen.findByLabelText('Concepto');
+    fireEvent.change(screen.getByLabelText('Cuenta', { selector: '#ai-preview-account' }), {
+      target: { value: '2' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar operación' }));
+
+    await waitFor(() => {
+      expect(api.createOperation).toHaveBeenCalledWith(
+        expect.objectContaining({ account_id: 2, currency: 'ARS' }),
+      );
+    });
   });
 
   it('shows the backend detail when the extraction fails', async () => {
