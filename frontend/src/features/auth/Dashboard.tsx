@@ -21,13 +21,12 @@ export function Dashboard() {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const { accounts, loading: accountsLoading, fetchAccounts, addAccount } = useAccounts();
-  const { operations, loading: opsLoading, fetchOperations } = useOperations();
-  const { loading: catsLoading } = useCategories();
+  const { operations, loading: opsLoading, fetchOperations, addOperation } = useOperations();
+  const { loading: catsLoading, categories } = useCategories();
 
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [showAccountForm, setShowAccountForm] = useState(false);
   const [showOperationForm, setShowOperationForm] = useState(false);
-  const [error] = useState<string | null>(null);
 
   const loading = accountsLoading || opsLoading || catsLoading;
 
@@ -104,14 +103,6 @@ export function Dashboard() {
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50">Cargando...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-red-600">{error}</p>
-      </div>
-    );
   }
 
   return (
@@ -227,8 +218,10 @@ export function Dashboard() {
         {showOperationForm && (
           <AIExtractionForm
             accounts={accounts}
+            categories={categories}
             selectedAccountId={selectedAccountId}
             onSelectAccount={handleSelectAccount}
+            onAddOperation={addOperation}
             onCreateOperation={handleCreateOperation}
             onClose={handleToggleOperationForm}
             show={true}
