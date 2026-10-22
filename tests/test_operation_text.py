@@ -20,24 +20,6 @@ CATEGORY_OPTIONS = [
 
 
 class TestExtractionPrompt:
-    def test_prompt_includes_narration_categories_and_json_shape(self):
-        prompt = TextOperationService.build_extraction_prompt("gaste 9800 pesos en Carrefour", CATEGORY_OPTIONS)
-        assert "gaste 9800 pesos en Carrefour" in prompt
-        for option in CATEGORY_OPTIONS:
-            assert option["name"] in prompt
-        assert '"type": "income"|"expense"|"transfer"' in prompt
-        assert '{"concept": string' in prompt
-        assert "no los traduzcas" in prompt
-        assert "descripción breve pero formal de la operación" in prompt
-        assert "incluya los detalles relevantes" in prompt
-        assert "Pago de la factura de Claro del mes de octubre" in prompt
-        assert "grafía oficial de la marca" in prompt
-        assert "'Carrefour'" in prompt
-
-    def test_prompt_demands_json_only(self):
-        prompt = TextOperationService.build_extraction_prompt("some text", CATEGORY_OPTIONS)
-        assert "SOLO con un objeto JSON válido" in prompt
-
     @pytest.mark.parametrize(
         "account_currency, expected_fragment",
         [
@@ -54,6 +36,23 @@ class TestExtractionPrompt:
         assert expected_fragment in prompt
         if account_currency:
             assert account_currency in prompt
+
+    def test_prompt_static_content(self):
+        """The static prompt always includes the narration, the active catalog names,
+        the required JSON shape, the no-translation warning and the field rules."""
+        prompt = TextOperationService.build_extraction_prompt("gaste 9800 pesos en Carrefour", CATEGORY_OPTIONS)
+        assert "gaste 9800 pesos en Carrefour" in prompt
+        for option in CATEGORY_OPTIONS:
+            assert option["name"] in prompt
+        assert "SOLO con un objeto JSON válido" in prompt
+        assert '{"concept": string' in prompt
+        assert '"type": "income"|"expense"|"transfer"' in prompt
+        assert "no los traduzcas" in prompt
+        assert "descripción breve pero formal de la operación" in prompt
+        assert "incluya los detalles relevantes" in prompt
+        assert "Pago de la factura de Claro del mes de octubre" in prompt
+        assert "grafía oficial de la marca" in prompt
+        assert "'Carrefour'" in prompt
 
 
 class TestParseExtraction:
@@ -195,6 +194,13 @@ class TestToOperationPayload:
         payload = TextOperationService.to_operation_payload(extraction, CATEGORY_OPTIONS)
         for key, value in expected_payload.items():
             assert payload[key] == value
+
+    @pytest.mark.parametrize("field", ["concept", "name"])
+    def test_free_text_truncated_to_250_chars(self, field):
+        """Free-text fields are truncated to the `Operation` column length (250)."""
+        extraction = {"concept": "X", "amount": 10, "type": "expense", "category": "supermercado", field: "z" * 251}
+        payload = TextOperationService.to_operation_payload(extraction, CATEGORY_OPTIONS)
+        assert payload[field] == "z" * 250
 
     @pytest.mark.parametrize(
         "raw_amount, expected",
