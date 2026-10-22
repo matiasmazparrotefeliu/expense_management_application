@@ -1,15 +1,11 @@
 import { memo } from 'react';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 import type { Operation } from '@/types/operation';
 import { TYPE_LABELS } from '@/utils/constants';
 
 interface OperationsTableProps {
   operations: Operation[];
   selectedAccountId: number | null;
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-AR');
 }
 
 export const OperationsTable = memo(function OperationsTable({
