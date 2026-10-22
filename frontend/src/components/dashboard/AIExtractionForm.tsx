@@ -306,8 +306,10 @@ export const AIExtractionForm = memo(function AIExtractionForm({
       ) : (
         <OperationForm
           accounts={accounts}
+          categories={categories}
           selectedAccountId={selectedAccountId}
           onSelectAccount={onSelectAccount}
+          onAddOperation={onAddOperation}
           onCreateOperation={onCreateOperation}
           onClose={onClose}
           show={true}
