@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.git
+Dockerfile
+.dockerignore
+.env*
+src/__tests__
+.prettierrc
+netlify.toml
+*.md

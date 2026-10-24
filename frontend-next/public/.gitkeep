@@ -1,0 +1,3 @@
+# Placeholder so the public/ directory exists for Docker's `COPY ./public`
+# (the Docker runner stage copies it unconditionally). Replace with real
+# assets (favicon, images) as needed.
