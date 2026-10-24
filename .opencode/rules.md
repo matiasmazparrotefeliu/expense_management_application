@@ -3,7 +3,7 @@
 ## 1. Arquitectura y Estructura del Proyecto
 - **Monorepo**:
   - `backend/src/`: Código fuente de la API (FastAPI)[cite: 1].
-  - `frontend/src/`: Código fuente de la interfaz web (React + Vite + TypeScript)[cite: 2, 3].
+  - `frontend-next/`: Código fuente de la interfaz web (Next.js 15 App Router + React 19 + TypeScript) — `frontend/` (SPA Vite) fue eliminada.
 - **Patrón Backend**: Separación estricta por responsabilidades:
   - `api/`: Routers y endpoints HTTP[cite: 1].
   - `auth/`: Lógica de autenticación JWT y gestión de permisos[cite: 1].
@@ -32,7 +32,7 @@
 
 ---
 
-## 3. Reglas del Frontend (React / TypeScript / Tailwind CSS)
+## 3. Reglas del Frontend (Next.js / React / TypeScript / Tailwind CSS)
 - **TypeScript**:
   - Configuración estricta (`strict: true`)[cite: 2].
   - Definir tipos e interfaces en `src/types/` sincronizados con los schemas Pydantic del backend.
@@ -45,7 +45,7 @@
 ---
 
 ## 4. Guardarraíles de Seguridad y Calidad
-1. **No Hardcodeing**: Variables de entorno manejadas vía `.env` (`pydantic-settings` en backend y `import.meta.env` / `VITE_` en frontend)[cite: 2, 3].
+1. **No Hardcodeing**: Variables de entorno manejadas vía `.env` (`pydantic-settings` en backend y `process.env.NEXT_PUBLIC_*` en Next.js)[cite: 2, 3].
 2. **Encriptación**: Las contraseñas de los usuarios deben hashearse obligatoriamente antes de guardarse en la tabla `users`.
 3. **Mantenimiento de Integridad**: Respetar las restricciones `RESTRICT` en `Category` para evitar eliminar categorías asociadas a operaciones existentes.
 
@@ -63,7 +63,7 @@
 
 ## 5. Guardarraíles de Seguridad y Datos
 
-1. **No Hardcoding**: Variables de entorno manejadas exclusivamente vía `.env` (`pydantic-settings` en backend y `import.meta.env` / `VITE_` en frontend)[cite: 2, 3].
+1. **No Hardcoding**: Variables de entorno manejadas exclusivamente vía `.env` (`pydantic-settings` en backend y `process.env.NEXT_PUBLIC_*` en Next.js)[cite: 2, 3].
 2. **Encriptación**: Las contraseñas de los usuarios deben hashearse obligatoriamente antes de guardarse en la tabla `users`.
 3. **Mantenimiento de Integridad**: Respetar las restricciones `RESTRICT` en `Category` para evitar eliminar categorías asociadas a operaciones existentes.
 
@@ -92,8 +92,8 @@
 
 ### Buenas Prácticas en Frontend (React / TypeScript / Vite)
 - **Desacoplamiento de UI y Lógica**:
-  - Los componentes de UI (`components/`) deben ser lo más puros y tontos (*presentational*) posible[cite: 2].
-  - La lógica de estado, llamadas a la API y efectos deben aislarse en Custom Hooks (`hooks/`) o Servicios (`services/` / `api/`)[cite: 2].
+  - Los componentes de UI (`app/`, `components/`) deben ser lo más puros y tontos (*presentational*) posible[cite: 2].
+  - La lógica de estado, llamadas a la API y efectos deben aislarse en el `DataProvider` / Custom Hooks (`hooks/`) o Servicios (`api/`)[cite: 2].
 - **Tipado Estricto**: Prohibido el uso de `any`. Definir e importar los tipos en `types/` asegurando la sincronización de contratos con las respuestas Pydantic del backend[cite: 2].
 - **Manejo de Estado Remoto y Caching**: Centralizar la captura de datos, manejo de estados de carga (`isLoading`), errores y revalidaciones usando herramientas como `@tanstack/react-query` o hooks personalizados centralizados en la capa de API[cite: 2].
 - **Principios de Componentización**: Mantener componentes pequeños, cohesivos y legibles (un solo propósito por componente). Reutilizar primitives de UI.
