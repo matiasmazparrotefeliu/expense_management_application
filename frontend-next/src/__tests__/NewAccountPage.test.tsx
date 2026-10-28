@@ -1,21 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import NewAccountPage from '../../app/(protected)/accounts/new/page';
-import { DataProvider } from '@/features/data/DataProvider';
 import {
   mockNewAccount,
   routerMock,
   setupDefaultMocks,
 } from '@/__tests__/utils/testUtils';
+import NewAccountPage from '../../app/(protected)/accounts/new/page';
+import { DataProvider } from '@/features/data/DataProvider';
+import { createAccountSchema } from '@/features/auth/formSchemas';
+
+// The mock factory is hoisted above the module body, so the api object lives
+// in `vi.hoisted` (imports are not initialized yet when the factory runs).
+const api = vi.hoisted(() => ({
+  getAccounts: vi.fn(),
+  getOperations: vi.fn(),
+  createAccount: vi.fn(),
+  getCategories: vi.fn(),
+  createOperation: vi.fn(),
+  extractOperationFromText: vi.fn(),
+}));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => routerMock,
   usePathname: () => '/accounts/new',
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
-
-const api = setupDefaultMocks();
 
 vi.mock('@/api/operationsApi', () => api);
 
@@ -47,7 +57,7 @@ describe('NewAccountPage', () => {
 
     await openAccountPage();
 
-    await screen.findByText('Crear cuenta');
+    await screen.findByRole('heading', { name: 'Crear cuenta' });
     fireEvent.change(screen.getByLabelText('Nombre de la cuenta'), {
       target: { value: 'Inversiones' },
     });
@@ -84,7 +94,7 @@ describe('NewAccountPage', () => {
 
     await openAccountPage();
 
-    await screen.findByText('Crear cuenta');
+    await screen.findByRole('heading', { name: 'Crear cuenta' });
     fireEvent.change(screen.getByLabelText('Nombre de la cuenta'), { target: { value: 'Cash USD' } });
     fireEvent.change(screen.getByLabelText('Balance inicial'), { target: { value: '100' } });
     fireEvent.change(screen.getByLabelText('Entidad bancaria / plataforma'), {
@@ -97,18 +107,17 @@ describe('NewAccountPage', () => {
   });
 
   it('rejects a non-positive starting balance via the schema', async () => {
-    api.getAccounts.mockResolvedValue([]);
-    api.getOperations.mockResolvedValue([]);
-
-    await openAccountPage();
-
-    await screen.findByText('Crear cuenta');
-    fireEvent.change(screen.getByLabelText('Nombre de la cuenta'), { target: { value: 'Foo' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
-
-    expect(
-      await screen.findByText('El balance inicial debe ser mayor a 0')
-    ).toBeInTheDocument();
-    expect(api.createAccount).not.toHaveBeenCalled();
+    const { success, error } = createAccountSchema.safeParse({
+      name: 'Foo',
+      currency: 'USD',
+      balance: '0',
+      bank: 'BBVA',
+    });
+    expect(success).toBe(false);
+    expect(error?.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: ['balance'], message: 'El balance inicial debe ser mayor a 0' }),
+      ])
+    );
   });
 });

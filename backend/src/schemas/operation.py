@@ -60,3 +60,39 @@ class CreateOperation(BaseModel):
 
     def to_dict(self):
         return self.dict()
+
+class UpdateOperation(BaseModel):
+    """Operation update payload. All fields are optional; the service is responsible
+    for enforcing that at least one field is supplied (422 otherwise).
+
+    `name` is the merchant/service/person associated with the operation (optional;
+    defaults to "Other" for `transfer` operations when omitted, see
+    `OperationService.create_new`).
+
+    `currency` is optional: when supplied it must be a supported currency
+    (validated here against `SUPPORTED_CURRENCIES`) and must match the target
+    account's currency (enforced in the service with a 400); when omitted the
+    operation simply inherits the account's currency.
+
+    `amount` must be strictly positive (422 otherwise) — a zero or negative
+    amount would otherwise let a debit grow the balance instead of shrinking it.
+    """
+
+    concept: Optional[str] = Field(default=None, min_length=1, max_length=250)
+    amount: Optional[float] = Field(default=None, gt=0)
+    type: Optional[str] = None
+    account_id: Optional[int] = None
+    category_id: Optional[int] = None
+    name: Optional[str] = Field(default=None, max_length=250)
+    currency: Optional[str] = None
+
+    @field_validator("currency")
+    @classmethod
+    def currency_must_be_supported(cls, value: Optional[str]) -> Optional[str]:
+        """Normalize to uppercase and reject any currency outside `SUPPORTED_CURRENCIES`."""
+        if value is None:
+            return value
+        return validate_supported_currency(value)
+
+    def to_dict(self):
+        return self.dict(exclude_unset=True)

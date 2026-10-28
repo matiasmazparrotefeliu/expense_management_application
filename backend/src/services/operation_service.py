@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
 from ..models import Operation, OperationType, Account, Category
-from ..schemas import CreateOperation
+from ..schemas import CreateOperation, UpdateOperation
 from ..core.operation_types import normalize_operation_type
 
 class OperationService():
@@ -24,6 +24,12 @@ class OperationService():
             return normalize_operation_type(raw_type)
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    def _signed_delta(self, operation_type: OperationType, amount) -> Decimal:
+        """Balance effect of an operation: credits `income` (+amount), debits
+        `expense` and `transfer` (-amount) — the single source of truth shared by
+        `create_new`, `update_by_user_and_id` and `delete_by_user_and_id`."""
+        return Decimal(str(amount)) if operation_type == OperationType.income else -Decimal(str(amount))
 
     def get_owned_account(self, user_id: int, account_id: int, lock: bool = False) -> Account:
         """Fetch an account enforcing ownership: 404 when missing, 403 when it belongs
@@ -107,8 +113,7 @@ class OperationService():
                 )
 
             amount = Decimal(str(operation.amount))
-            delta = amount if op_type == OperationType.income else -amount
-            new_balance = account.balance + delta
+            new_balance = account.balance + self._signed_delta(op_type, amount)
             if new_balance <= 0:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Insufficient balance")
 
@@ -132,3 +137,118 @@ class OperationService():
             raise
 
         return JSONResponse(content=new_operation.to_dict(), status_code=status.HTTP_201_CREATED)
+
+    def delete_by_user_and_id(self, user_id: int, id: int):
+        """Delete an operation and reverse its effect on the target account's balance.
+
+        Locks the account row (`with_for_update`) for the duration of the balance
+        update to avoid lost updates under concurrent writes — this only provides
+        real row locking on MySQL; SQLite (used in tests/dev) ignores it. Rejects
+        the deletion with 403 if the operation doesn't belong to an account owned
+        by the caller, and with 400 if reversing the operation would leave the
+        balance at or below zero (the balance must always stay strictly greater
+        than the debited amount). `transfer` operations are reversed like `expense`.
+        """
+        try:
+            operation = self.db.query(Operation).join(Account).filter(
+                and_(Account.user_id == user_id, Operation.id == id)
+            ).first()
+            if not operation:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operation not found")
+
+            account = self.get_owned_account(user_id, operation.account_id, lock=True)
+
+            new_balance = account.balance - self._signed_delta(operation.type, operation.amount)
+            if new_balance <= 0:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Insufficient balance to reverse operation")
+
+            account.balance = new_balance
+            self.db.delete(operation)
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+
+        return JSONResponse(content={"detail": "Operation deleted successfully"}, status_code=status.HTTP_200_OK)
+
+    def update_by_user_and_id(self, user_id: int, id: int, operation_data: UpdateOperation):
+        """Update an operation and adjust the target account's balance accordingly.
+
+        Locks the account row (`with_for_update`) for the duration of the balance
+        update to avoid lost updates under concurrent writes — this only provides
+        real row locking on MySQL; SQLite (used in tests/dev) ignores it. Rejects
+        the update with 403 if the operation doesn't belong to an account owned
+        by the caller, and with 400 if adjusting the operation would leave the
+        balance at or below zero (the balance must always stay strictly greater
+        than the debited amount). `transfer` operations are adjusted like `expense`.
+        Cross-account moves are not supported: `UpdateOperation.account_id`, when
+        supplied, is ignored and the operation stays on its current account.
+        """
+        try:
+            operation = self.db.query(Operation).join(Account).filter(
+                and_(Account.user_id == user_id, Operation.id == id)
+            ).first()
+            if not operation:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operation not found")
+
+            account = self.get_owned_account(user_id, operation.account_id, lock=True)
+
+            # 1. Revert the current operation's balance effect first (its inverse)
+            current_balance = account.balance - self._signed_delta(operation.type, operation.amount)
+
+            # 2. Resolve the new values: amount/type come from the payload when
+            # supplied, otherwise the stored operation is kept.
+            new_amount = Decimal(str(operation_data.amount)) if operation_data.amount is not None else operation.amount
+            new_type = self._normalize_type(operation_data.type) if operation_data.type is not None else operation.type
+            
+            # Validate category if provided or if type changed (category must match type)
+            category_id = operation_data.category_id if operation_data.category_id is not None else operation.category_id
+            category = self.db.query(Category).filter(
+                Category.id == category_id, Category.is_active == True
+            ).first()
+            
+            if not category:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"The category with id {category_id} does not exist or is inactive.",
+                )
+            if category.type != new_type:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"The category '{category.name}' is of type {category.type.value} but "
+                           f"the operation is of type {new_type.value}.",
+                )
+
+            # 3. Apply the new operation's balance effect and validate the result
+            final_balance = current_balance + self._signed_delta(new_type, new_amount)
+
+            if final_balance <= 0:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Insufficient balance to apply update")
+
+            # Update operation fields
+            if operation_data.concept is not None:
+                operation.concept = operation_data.concept
+            operation.amount = new_amount
+            operation.type = new_type
+            operation.category_id = category.id
+            
+            if operation_data.currency is not None:
+                if operation_data.currency.upper() != account.currency.upper():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Currency mismatch: the updated currency is {operation_data.currency.upper()} "
+                               f"but the account operates in {account.currency.upper()}",
+                    )
+                operation.currency = operation_data.currency.upper()
+            
+            if operation_data.name is not None:
+                operation.name = operation_data.name
+            elif new_type == OperationType.transfer and operation.name is None:
+                operation.name = "Other"
+
+            account.balance = final_balance
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        return JSONResponse(content={"detail": "Operation updated successfully"}, status_code=status.HTTP_200_OK)

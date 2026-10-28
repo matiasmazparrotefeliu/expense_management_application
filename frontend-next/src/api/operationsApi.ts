@@ -28,6 +28,19 @@ export const createOperation = async (data: CreateOperationPayload): Promise<Ope
   return response.data;
 };
 
+export const getOperationById = async (id: number): Promise<Operation> => {
+  const response = await apiClient.get<Operation>(`${API_ENDPOINTS.OPERATIONS_BY_ID}/${id}`);
+  return response.data;
+};
+
+export const updateOperation = async (id: number, data: Partial<CreateOperationPayload>): Promise<void> => {
+  await apiClient.put(`${API_ENDPOINTS.OPERATIONS_BY_ID}/${id}`, data);
+};
+
+export const deleteOperation = async (id: number): Promise<void> => {
+  await apiClient.delete(`${API_ENDPOINTS.OPERATIONS_BY_ID}/${id}`);
+};
+
 export const extractOperationFromText = async (
   narration: string,
   accountId: number
@@ -38,3 +51,4 @@ export const extractOperationFromText = async (
   });
   return response.data;
 };
+

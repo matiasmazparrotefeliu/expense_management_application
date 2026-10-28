@@ -7,6 +7,7 @@ export const ROUTES = {
   REGISTER: '/register',
   DASHBOARD: '/',
   OPERATIONS_NEW: '/operations/new',
+  OPERATIONS_EDIT: '/operations/edit',
   ACCOUNTS_NEW: '/accounts/new',
 } as const;
 
@@ -28,6 +29,7 @@ export const API_ENDPOINTS = {
   OPERATIONS: '/operations/',
   OPERATIONS_NEW: '/operations/new',
   OPERATIONS_FROM_TEXT: '/operations/from-text',
+  OPERATIONS_BY_ID: '/operations',
   CATEGORIES: '/categories/',
   USERS_NEW: '/users/new',
   USERS_LOGIN: '/users/login',

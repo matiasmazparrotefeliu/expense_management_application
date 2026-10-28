@@ -15,6 +15,8 @@ import {
   getOperations,
   createAccount,
   createOperation,
+  updateOperation,
+  deleteOperation,
 } from '@/api/operationsApi';
 import type { Account, CreateAccountPayload } from '@/types/auth';
 import type { Category, CreateOperationPayload, Operation } from '@/types/operation';
@@ -40,6 +42,8 @@ interface DataContextType {
   refreshAll: () => Promise<void>;
   addAccount: (data: CreateAccountPayload) => Promise<Account>;
   addOperation: (data: CreateOperationPayload) => Promise<Operation>;
+  editOperation: (id: number, data: Partial<CreateOperationPayload>) => Promise<void>;
+  removeOperation: (id: number) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -126,6 +130,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return created;
   }, [fetchAccounts, fetchOperations]);
 
+  const editOperation = useCallback(async (id: number, data: Partial<CreateOperationPayload>) => {
+    await updateOperation(id, data);
+    // Reload both lists: the balance changed.
+    await Promise.all([fetchAccounts(), fetchOperations()]);
+  }, [fetchAccounts, fetchOperations]);
+
+  const removeOperation = useCallback(async (id: number) => {
+    await deleteOperation(id);
+    // Reload both lists: the balance changed.
+    await Promise.all([fetchAccounts(), fetchOperations()]);
+  }, [fetchAccounts, fetchOperations]);
+
   const value = useMemo(
     () => ({
       accounts,
@@ -140,6 +156,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       refreshAll,
       addAccount,
       addOperation,
+      editOperation,
+      removeOperation,
     }),
     [
       accounts,
@@ -154,6 +172,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       refreshAll,
       addAccount,
       addOperation,
+      editOperation,
+      removeOperation,
     ]
   );
 

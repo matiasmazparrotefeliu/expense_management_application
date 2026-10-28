@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { Login } from '@/features/auth/Login';
 import { routerMock, AuthContextStub } from '@/__tests__/utils/testUtils';
+import { Login } from '@/features/auth/Login';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => routerMock,
@@ -21,7 +21,7 @@ const renderLogin = () => {
 describe('Login', () => {
   it('renders login form', () => {
     renderLogin();
-    expect(screen.getByText('Iniciar sesión')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
   });
 
   it('renders email and password inputs', () => {
