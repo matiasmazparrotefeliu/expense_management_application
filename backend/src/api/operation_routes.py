@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 
+from ..schemas.operation import UpdateOperation
+
 from ..schemas import OperationResponse, CreateOperation, TextOperationCreate, ExtractedOperationResponse
 from ..db.config import get_db
 from ..services import OperationService, TextOperationService
@@ -14,6 +16,8 @@ class OperationRoutes:
         self.router.add_api_route("/{id}", self.get_operation, response_model=OperationResponse, methods=["GET"])
         self.router.add_api_route("/new", self.create_operation, response_model=OperationResponse, methods=["POST"])
         self.router.add_api_route("/from-text", self.create_operation_from_text, response_model=ExtractedOperationResponse, methods=["POST"])
+        self.router.add_api_route("/{id}", self.update_operation, response_model=OperationResponse, methods=["PUT"])
+        self.router.add_api_route("/{id}", self.delete_operation, methods=["DELETE"])
 
     @staticmethod
     def get_operations(user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -53,3 +57,15 @@ class OperationRoutes:
         extracted = text_service.extract(user['id'], body.text, body.account_id)
         print(f"Narration extracted successfully: {extracted}")
         return extracted
+
+    @staticmethod
+    def update_operation(id: int, operation: UpdateOperation, user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+        operation_services = OperationService(db)
+        updated_operation = operation_services.update_by_user_and_id(user['id'], id, operation)
+        return updated_operation
+
+    @staticmethod
+    def delete_operation(id: int, user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+        operation_services = OperationService(db)
+        deleted_operation = operation_services.delete_by_user_and_id(user['id'], id)
+        return deleted_operation
