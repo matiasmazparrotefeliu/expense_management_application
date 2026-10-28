@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import DashboardPage from '../../app/(protected)/page';
-import { DataProvider } from '@/features/data/DataProvider';
 import {
   mockAccounts,
   mockOperations,
@@ -10,6 +8,19 @@ import {
   mockAuthProvider,
   setupDefaultMocks,
 } from '@/__tests__/utils/testUtils';
+import DashboardPage from '../../app/(protected)/page';
+import { DataProvider } from '@/features/data/DataProvider';
+
+// The mock factory is hoisted above the module body, so the api object lives
+// in `vi.hoisted` (imports are not initialized yet when the factory runs).
+const api = vi.hoisted(() => ({
+  getAccounts: vi.fn(),
+  getOperations: vi.fn(),
+  createAccount: vi.fn(),
+  getCategories: vi.fn(),
+  createOperation: vi.fn(),
+  extractOperationFromText: vi.fn(),
+}));
 
 mockAuthProvider();
 
@@ -18,8 +29,6 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/',
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
-
-const api = setupDefaultMocks();
 
 vi.mock('@/api/operationsApi', () => api);
 
@@ -46,7 +55,7 @@ describe('Dashboard (operations panel)', () => {
 
     expect(await screen.findByText('Cash USD — BBVA (USD)')).toBeInTheDocument();
     expect(screen.getByText('Efectivo ARS — Mercado Pago (ARS)')).toBeInTheDocument();
-    expect(screen.getByText('Balance total de ahorros')).toBeInTheDocument();
+    expect(await screen.findByText('Balance total de ahorros')).toBeInTheDocument();
   });
 
   it('shows the operations of the selected account', async () => {
@@ -57,7 +66,9 @@ describe('Dashboard (operations panel)', () => {
 
     expect(await screen.findByText('Supermercado')).toBeInTheDocument();
     expect(screen.getByText('Sueldo')).toBeInTheDocument();
-    expect(screen.getByText('Egreso')).toBeInTheDocument();
+    // Two table rows are expenses (Supermercado + the cable bill), so several
+    // cells legitimately share the "Egreso" label.
+    expect(screen.getAllByText('Egreso').length).toBeGreaterThan(0);
     expect(screen.getByText('Ingreso')).toBeInTheDocument();
     expect(screen.getByText('Alimentos')).toBeInTheDocument();
     expect(screen.getByText('Mercado')).toBeInTheDocument();
@@ -79,7 +90,13 @@ describe('Dashboard (operations panel)', () => {
 
     await renderDashboard();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Nueva operación' }));
+    // Wait for the asynchronous selection effect (`selectedAccountId`): the
+    // savings balance block only renders once an account is selected, so its
+    // appearance guarantees the "Nueva operación" button carries `?account=1`
+    // (the <select> alone would misleadingly show its first option).
+    await screen.findByText('Balance total de ahorros');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nueva operación' }));
     expect(routerMock.push).toHaveBeenCalledWith('/operations/new?account=1');
 
     fireEvent.click(screen.getByRole('button', { name: 'Nueva cuenta' }));

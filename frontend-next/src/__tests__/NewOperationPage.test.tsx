@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import NewOperationForm from '@/features/operations/NewOperationForm';
-import { DataProvider } from '@/features/data/DataProvider';
 import {
   mockAccounts,
   mockOperations,
@@ -11,6 +9,8 @@ import {
   setupDefaultMocks,
   setTestUrl,
 } from '@/__tests__/utils/testUtils';
+import NewOperationForm from '@/features/operations/NewOperationForm';
+import { DataProvider } from '@/features/data/DataProvider';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => routerMock,
@@ -18,7 +18,16 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
-const api = setupDefaultMocks();
+// The mock factory is hoisted above the module body, so the api object lives
+// in `vi.hoisted` (imports are not initialized yet when the factory runs).
+const api = vi.hoisted(() => ({
+  getAccounts: vi.fn(),
+  getOperations: vi.fn(),
+  createAccount: vi.fn(),
+  getCategories: vi.fn(),
+  createOperation: vi.fn(),
+  extractOperationFromText: vi.fn(),
+}));
 
 vi.mock('@/api/operationsApi', () => api);
 
@@ -41,6 +50,18 @@ async function openOperationPage() {
       <NewOperationForm />
     </DataProvider>
   );
+}
+
+/**
+ * Waits until the DataProvider's asynchronous account-selection effect has
+ * applied an account (`selectedAccountId`): the submit button stays disabled
+ * while it is null, so an enabled button guarantees submits/extractions go out
+ * with the preselected `account_id` even under suite timing.
+ */
+async function waitForAccountSelected(): Promise<void> {
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'Registrar operación' })).toBeEnabled();
+  });
 }
 
 beforeEach(() => {
@@ -78,6 +99,7 @@ describe('NewOperationPage (tabs IA / manual)', () => {
     await openOperationPage();
 
     await screen.findByText('Cash USD — BBVA (USD)');
+    await waitForAccountSelected();
     fireEvent.change(screen.getByLabelText('Concepto'), { target: { value: 'Gimnasio' } });
     fireEvent.change(screen.getByLabelText('Monto'), { target: { value: '150' } });
     fireEvent.change(screen.getByLabelText('Nombre (opcional)'), { target: { value: 'Gym Plus' } });
@@ -98,25 +120,27 @@ describe('NewOperationPage (tabs IA / manual)', () => {
     await waitFor(() => {
       expect(routerMock.push).toHaveBeenCalledWith('/');
     });
-    expect(await screen.findByText(/saldo \$ 1\.050,50/)).toBeInTheDocument();
+    expect(await screen.findByText(/saldo US\$ 1\.050,50/)).toBeInTheDocument();
   });
 
   it('shows a warning when the manual operation fails due to insufficient balance', async () => {
     api.getAccounts.mockResolvedValue(accounts);
     api.getOperations.mockResolvedValue(operations);
+    // The form surfaces the backend's `detail` verbatim, so fake a 400 with one.
     api.createOperation.mockRejectedValue({
       isAxiosError: true,
-      response: { status: 400 },
+      response: { status: 400, data: { detail: 'Insufficient balance' } },
     });
 
     await openOperationPage();
 
     await screen.findByText('Cash USD — BBVA (USD)');
+    await waitForAccountSelected();
     fireEvent.change(screen.getByLabelText('Concepto'), { target: { value: 'Compra grande' } });
     fireEvent.change(screen.getByLabelText('Monto'), { target: { value: '99999' } });
     fireEvent.click(screen.getByRole('button', { name: 'Registrar operación' }));
 
-    expect(await screen.findByText('Saldo insuficiente o datos inválidos')).toBeInTheDocument();
+    expect(await screen.findByText('Insufficient balance')).toBeInTheDocument();
     expect(routerMock.push).not.toHaveBeenCalled();
   });
 
@@ -128,6 +152,7 @@ describe('NewOperationPage (tabs IA / manual)', () => {
     await openOperationPage();
 
     await screen.findByText('Cash USD — BBVA (USD)');
+    await waitForAccountSelected();
     await gotoAiTab();
     await extractNarration('gaste 9800 pesos en Carrefour');
 
@@ -169,6 +194,7 @@ describe('NewOperationPage (tabs IA / manual)', () => {
     await openOperationPage();
 
     await screen.findByText('Cash USD — BBVA (USD)');
+    await waitForAccountSelected();
     await gotoAiTab();
     await extractNarration('gaste 9800 pesos en Carrefour');
 
@@ -201,6 +227,7 @@ describe('NewOperationPage (tabs IA / manual)', () => {
     await openOperationPage();
 
     await screen.findByText('Cash USD — BBVA (USD)');
+    await waitForAccountSelected();
     await gotoAiTab();
     await extractNarration('pague 10800 pesos');
 
@@ -225,6 +252,7 @@ describe('NewOperationPage (tabs IA / manual)', () => {
     await openOperationPage();
 
     await screen.findByText('Cash USD — BBVA (USD)');
+    await waitForAccountSelected();
     await gotoAiTab();
     await extractNarration('gaste 99999 pesos');
 
@@ -241,6 +269,7 @@ describe('NewOperationPage (tabs IA / manual)', () => {
     await openOperationPage();
 
     await screen.findByText('Cash USD — BBVA (USD)');
+    await waitForAccountSelected();
     await gotoAiTab();
     await extractNarration('gaste 9800 pesos en Carrefour');
 
@@ -260,6 +289,7 @@ describe('NewOperationPage (tabs IA / manual)', () => {
     await openOperationPage();
 
     await screen.findByText('Cash USD — BBVA (USD)');
+    await waitForAccountSelected();
 
     fireEvent.change(screen.getByLabelText('Cuenta', { selector: '#operation-account' }), {
       target: { value: '2' },
@@ -296,6 +326,9 @@ describe('NewOperationPage (tabs IA / manual)', () => {
 
     await openOperationPage();
 
+    await screen.findByText('Cash USD — BBVA (USD)');
+    await waitForAccountSelected();
+    await gotoAiTab();
     const aiAccount = await screen.findByLabelText('Cuenta', { selector: '#ai-account' });
     await waitFor(() => {
       expect((aiAccount as unknown as HTMLSelectElement).value).toBe('2');

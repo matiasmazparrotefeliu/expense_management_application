@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { Register } from '@/features/auth/Register';
 import { routerMock, AuthContextStub } from '@/__tests__/utils/testUtils';
+import { Register } from '@/features/auth/Register';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => routerMock,
@@ -21,7 +21,7 @@ const renderRegister = () => {
 describe('Register', () => {
   it('renders register form', () => {
     renderRegister();
-    expect(screen.getByText('Crear cuenta')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Crear cuenta' })).toBeInTheDocument();
   });
 
   it('renders name, email and password inputs', () => {

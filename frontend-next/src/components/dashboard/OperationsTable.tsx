@@ -1,7 +1,9 @@
 import { memo } from 'react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import type { Operation } from '@/types/operation';
-import { TYPE_LABELS } from '@/utils/constants';
+import { TYPE_LABELS, ROUTES } from '@/utils/constants';
+import { useData } from '@/features/data/DataProvider';
+import { useRouter } from 'next/navigation';
 
 interface OperationsTableProps {
   operations: Operation[];
@@ -12,6 +14,23 @@ export const OperationsTable = memo(function OperationsTable({
   operations,
   selectedAccountId,
 }: OperationsTableProps) {
+  const { removeOperation } = useData();
+  const router = useRouter();
+
+  const handleDelete = async (id: number) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar esta operación?')) {
+      try {
+        await removeOperation(id);
+      } catch {
+        alert('Hubo un error al eliminar la operación');
+      }
+    }
+  };
+
+  const handleEdit = (operation: Operation) => {
+    router.push(`${ROUTES.OPERATIONS_EDIT}?id=${operation.id}&account=${operation.account_id}`);
+  };
+
   const accountOperations = operations
     .filter((operation) => operation.account_id === selectedAccountId)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -47,6 +66,9 @@ export const OperationsTable = memo(function OperationsTable({
             <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
               Monto
             </th>
+            <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Acciones
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
@@ -76,6 +98,22 @@ export const OperationsTable = memo(function OperationsTable({
                 >
                   {isIncome ? '+' : '-'}
                   {formatCurrency(operation.amount, operation.currency)}
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    onClick={() => handleEdit(operation)}
+                    className="text-blue-600 hover:text-blue-900 transition-colors mr-3"
+                    title="Editar operación"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleDelete(operation.id)}
+                    className="text-red-600 hover:text-red-900 transition-colors"
+                    title="Eliminar operación"
+                  >
+                    Eliminar
+                  </button>
                 </td>
               </tr>
             );

@@ -4,12 +4,15 @@ import type { Category, Operation, ExtractedOperation } from '@/types/operation'
 import { AuthContext } from '@/features/auth/AuthProvider';
 import type { AuthState } from '@/types/auth';
 
-export const routerMock = vi.hoisted(() => ({
+// Plain module-level object (NOT `vi.hoisted`): `vi.hoisted` cannot be exported
+// from a shared helper module. Test files import this helper first so the
+// binding is initialized before any `vi.mock` factory touches it.
+export const routerMock = {
   push: vi.fn(),
   replace: vi.fn(),
   back: vi.fn(),
   refresh: vi.fn(),
-}));
+};
 
 export const mockAccounts: Account[] = [
   { id: 1, name: 'Cash USD', currency: 'USD', balance: 1200.5, bank: 'BBVA', is_active: true },
@@ -108,7 +111,10 @@ export function setupDefaultMocks(api = createMockApi()) {
   return api;
 }
 
-export function mockAuthProvider(overrides = {}) {
+export function mockAuthProvider() {
+  // The `vi.mock` factory must be closure-free (vitest hoists it and a factory
+  // over function parameters ends up referencing an undefined variable at
+  // execution time), so no per-call overrides are supported.
   return vi.mock('@/hooks/useAuth', () => ({
     useAuth: () => ({
       logout: vi.fn(),
@@ -118,7 +124,6 @@ export function mockAuthProvider(overrides = {}) {
       error: null,
       login: vi.fn(),
       register: vi.fn(),
-      ...overrides,
     }),
   }));
 }

@@ -20,8 +20,12 @@ interface OperationFormProps {
   categories: Category[];
   selectedAccountId: number | null;
   onSelectAccount: (id: number) => void;
-  onAddOperation: (data: CreateOperationPayload) => Promise<Operation>;
-  /** Called after the operation is registered; the page navigates to the dashboard. */
+  /** Creates (no `initialData`) or updates (`initialData`) the operation; the
+   * resolved value is not used by the form. */
+  onAddOperation: (data: CreateOperationPayload) => Promise<unknown>;
+  /** Optional initial data for editing an existing operation. */
+  initialData?: Operation;
+  /** Called after the operation is registered/updated; the page navigates to the dashboard. */
   onConfirm: () => void;
   /** Called on cancel; the page navigates back to the dashboard. */
   onCancel: () => void;
@@ -33,10 +37,13 @@ export const OperationForm = memo(function OperationForm({
   selectedAccountId,
   onSelectAccount,
   onAddOperation,
+  initialData,
   onConfirm,
   onCancel,
 }: OperationFormProps) {
-  const [operationType, setOperationType] = useState<OperationTypeInput>('egreso');
+  const [operationType, setOperationType] = useState<OperationTypeInput>(
+    initialData ? OperationTypeMapper.toInput(initialData.type) : 'egreso'
+  );
   const [creatingOperation, setCreatingOperation] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
 
@@ -61,12 +68,12 @@ export const OperationForm = memo(function OperationForm({
   } = useForm<CreateOperationFormData>({
     resolver: zodResolver(createOperationSchema),
     defaultValues: {
-      concept: '',
-      amount: 0,
-      type: 'egreso' as OperationTypeInput,
-      account_id: selectedAccountId ?? 0,
-      category_id: 0,
-      name: '',
+      concept: initialData?.concept ?? '',
+      amount: initialData?.amount ?? 0,
+      type: (initialData ? OperationTypeMapper.toInput(initialData.type) : 'egreso') as OperationTypeInput,
+      account_id: initialData?.account_id ?? selectedAccountId ?? 0,
+      category_id: initialData?.category_id ?? 0,
+      name: initialData?.name ?? '',
     },
   });
 
@@ -103,10 +110,8 @@ export const OperationForm = memo(function OperationForm({
       reset({ concept: '', amount: 0, name: '' });
       onConfirm();
     } catch (err) {
-      const status = (err as { response?: { status?: number } }).response?.status;
-      setOperationError(
-        status === 400 ? 'Saldo insuficiente o datos inválidos' : 'No se pudo crear la operación'
-      );
+      const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail;
+      setOperationError(detail ?? 'No se pudo registrar la operación');
     } finally {
       setCreatingOperation(false);
     }
@@ -115,7 +120,7 @@ export const OperationForm = memo(function OperationForm({
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold text-gray-900">Nueva operación</h2>
+        <h2 className="text-lg font-semibold text-gray-900">{initialData ? 'Editar operación' : 'Nueva operación'}</h2>
         <Button
           type="button"
           variant="ghost"
@@ -230,7 +235,7 @@ export const OperationForm = memo(function OperationForm({
             disabled={creatingOperation || isSubmitting || !selectedAccountId}
             className="w-auto"
           >
-            {creatingOperation ? 'Registrando...' : 'Registrar operación'}
+            {creatingOperation ? 'Procesando...' : initialData ? 'Actualizar operación' : 'Registrar operación'}
           </Button>
         </div>
       </form>

@@ -77,14 +77,7 @@ export default function DashboardPage() {
           loading={loading}
         />
 
-        {accounts.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-6 text-center mt-4">
-            <p className="text-gray-600">
-              Aún no tenés cuentas. Usá &quot;Nueva cuenta&quot; para crear tu primera cuenta y empezar a
-              registrar operaciones.
-            </p>
-          </div>
-        ) : (
+        {accounts.length > 0 && (
           <>
             <SavingsBalance account={selectedAccount} />
             <OperationsTable
