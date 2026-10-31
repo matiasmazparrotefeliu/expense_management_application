@@ -2,8 +2,8 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.db.config import Base, engine
-from src.models import User, Account, Operation, Category
-from src.api import UserRoutes, AccountRoutes, CategoryRoutes, OperationRoutes
+from src.models import User, Account, Operation, Category, BudgetLimit
+from src.api import UserRoutes, AccountRoutes, CategoryRoutes, OperationRoutes, BudgetRoutes
 from src.auth.middleware import LoadUserData
 
 app = FastAPI()
@@ -38,10 +38,12 @@ user_routes = UserRoutes().router
 account_routes = AccountRoutes().router
 category_routes = CategoryRoutes().router
 operations_router = OperationRoutes().router
+budgets_router = BudgetRoutes().router
 app.include_router(user_routes)
 app.include_router(account_routes)
 app.include_router(category_routes)
 app.include_router(operations_router)
+app.include_router(budgets_router)
 
 @app.get("/")
 def read_root():
