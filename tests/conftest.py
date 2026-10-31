@@ -39,12 +39,13 @@ from fastapi.testclient import TestClient  # noqa: E402
 def truncate_tables():
     """Delete user data from the test DB before every test.
 
-    Runs the deletes in foreign-key order (operations → accounts → users) and
-    deliberately keeps `categories`, whose active catalog is shared across tests
-    and lazily seeded by the `category` fixture when empty."""
+    Runs the deletes in foreign-key order (operations → budget_limits → accounts
+    → users) and deliberately keeps `categories`, whose active catalog is shared
+    across tests and lazily seeded by the fixtures when empty."""
     connection = sqlite3.connect(TEST_DB_PATH)
     try:
         connection.execute("DELETE FROM operations")
+        connection.execute("DELETE FROM budget_limits")
         connection.execute("DELETE FROM accounts")
         connection.execute("DELETE FROM users")
         connection.commit()
@@ -88,19 +89,29 @@ def category():
 def category_factory():
     """Factory fixture: return the id of an active category of the given type
     (`expense`/`income`/`transfer`), inserting a fallback row when the typed
-    catalog is empty on a fresh test DB."""
-    def _get_for_type(operation_type_name):
+    catalog is empty on a fresh test DB. Pass `budget_source=True` to require a
+    category flagged as a monthly budget source (the summary's "salary")."""
+    def _get_for_type(operation_type_name, budget_source=False):
         connection = sqlite3.connect(TEST_DB_PATH)
         try:
-            row = connection.execute(
-                "SELECT id FROM categories WHERE is_active = 1 AND type = ? ORDER BY id LIMIT 1",
-                (operation_type_name,),
-            ).fetchone()
+            if budget_source:
+                row = connection.execute(
+                    "SELECT id FROM categories WHERE is_active = 1 AND type = ? "
+                    "AND is_budget_source = 1 ORDER BY id LIMIT 1",
+                    (operation_type_name,),
+                ).fetchone()
+            else:
+                row = connection.execute(
+                    "SELECT id FROM categories WHERE is_active = 1 AND type = ? ORDER BY id LIMIT 1",
+                    (operation_type_name,),
+                ).fetchone()
             if row is None:
                 cursor = connection.execute(
-                    "INSERT INTO categories (name, type, description, is_active) VALUES (?, ?, ?, 1)",
+                    "INSERT INTO categories (name, type, description, is_active, is_budget_source) "
+                    "VALUES (?, ?, ?, 1, ?)",
                     (f"test {operation_type_name} category", operation_type_name,
-                     "Inserted by tests when the typed catalog is empty"),
+                     "Inserted by tests when the typed catalog is empty",
+                     1 if budget_source else 0),
                 )
                 connection.commit()
                 return cursor.lastrowid
@@ -151,6 +162,7 @@ def account(client, auth_headers, category, category_factory, account_payload):
         "headers": headers,
         "category_id": category,
         "category_income_id": category_factory("income"),
+        "category_salary_id": category_factory("income", budget_source=True),
         "category_transfer_id": category_factory("transfer"),
     }
 

@@ -3,3 +3,4 @@ from .account_service import AccountService
 from .category_service import CategoryService
 from .operation_service import OperationService
 from .operation_text_service import TextOperationService
+from .budget_service import BudgetService

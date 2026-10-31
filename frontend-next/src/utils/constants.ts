@@ -9,6 +9,7 @@ export const ROUTES = {
   OPERATIONS_NEW: '/operations/new',
   OPERATIONS_EDIT: '/operations/edit',
   ACCOUNTS_NEW: '/accounts/new',
+  REPORTS_MONTHLY: '/reports/monthly',
 } as const;
 
 export const CURRENCIES = ['USD', 'ARS'] as const;
@@ -30,7 +31,11 @@ export const API_ENDPOINTS = {
   OPERATIONS_NEW: '/operations/new',
   OPERATIONS_FROM_TEXT: '/operations/from-text',
   OPERATIONS_BY_ID: '/operations',
+  OPERATIONS_ACTIVE_PERIODS: '/operations/active-periods',
   CATEGORIES: '/categories/',
+  BUDGETS_SUMMARY: '/budgets/summary',
+  BUDGETS: '/budgets/',
+  BUDGETS_BY_ID: '/budgets',
   USERS_NEW: '/users/new',
   USERS_LOGIN: '/users/login',
 } as const;
