@@ -3,13 +3,14 @@
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, extract
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
 from ..models import Operation, OperationType, Account, Category
 from ..schemas import CreateOperation, UpdateOperation
 from ..core.operation_types import normalize_operation_type
+
 
 class OperationService():
     """Wraps the `Operation` queries and the balance-affecting create flow
@@ -69,6 +70,31 @@ class OperationService():
         if not operation:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operation not found")
         return JSONResponse(content=operation.to_dict(), status_code=status.HTTP_200_OK)
+
+    def get_active_periods(self, user_id: int, account_id: int):
+        """List the fiscal periods (year/month, newest first) that contain at
+        least one operation of the target account.
+
+        The monthly summary is deterministic (empty month = zero totals) and —
+        like the summary itself — scoped to a single account, so the report's
+        period selector is driven by this endpoint instead of a fixed calendar:
+        only months that actually have operations on the selected account are
+        selectable, and every period shares the account's currency. Foreign or
+        unknown accounts raise 403/404 via the ownership helper. `extract(year/
+        month)` crosses dialects (SQLite/MySQL/PostgreSQL), unlike `strftime`/
+        `DATE_FORMAT`/`to_char`."""
+        account = self.get_owned_account(user_id, account_id)
+        year = extract("year", Operation.date)
+        month = extract("month", Operation.date)
+        rows = (
+            self.db.query(year, month)
+            .filter(Operation.account_id == account.id)
+            .distinct()
+            .order_by(year.desc(), month.desc())
+            .all()
+        )
+        periods = [{"year": int(row[0]), "month": int(row[1])} for row in rows]
+        return JSONResponse(content=periods, status_code=status.HTTP_200_OK)
 
     def create_new(self, user_id: int, operation: CreateOperation):
         """Create an operation and apply its effect to the target account's balance.
