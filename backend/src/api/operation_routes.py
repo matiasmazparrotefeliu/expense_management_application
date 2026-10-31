@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -12,12 +12,27 @@ from ..auth.dependencies import get_current_user
 class OperationRoutes:
     def __init__(self):
         self.router = APIRouter(prefix="/operations")
+        # `active-periods` is registered BEFORE `/{id}` so it is not captured
+        # as a non-integer path segment (same-method collisions are resolved
+        # by registration order).
+        self.router.add_api_route("/active-periods", self.get_active_periods, methods=["GET"])
         self.router.add_api_route("/", self.get_operations, response_model=List[OperationResponse], methods=["GET"])
         self.router.add_api_route("/{id}", self.get_operation, response_model=OperationResponse, methods=["GET"])
         self.router.add_api_route("/new", self.create_operation, response_model=OperationResponse, methods=["POST"])
         self.router.add_api_route("/from-text", self.create_operation_from_text, response_model=ExtractedOperationResponse, methods=["POST"])
         self.router.add_api_route("/{id}", self.update_operation, response_model=OperationResponse, methods=["PUT"])
         self.router.add_api_route("/{id}", self.delete_operation, methods=["DELETE"])
+
+    @staticmethod
+    def get_active_periods(
+        account_id: int = Query(gt=0),
+        user: dict = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ):
+        """Fiscal months (newest first) holding at least one operation of the
+        target account; drives the report's period selector."""
+        operation_services = OperationService(db)
+        return operation_services.get_active_periods(user['id'], account_id)
 
     @staticmethod
     def get_operations(user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
