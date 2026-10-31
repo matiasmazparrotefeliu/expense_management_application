@@ -1,6 +1,6 @@
 import apiClient from './client';
 import type { Account } from '../types/auth';
-import type { Category, CreateOperationPayload, ExtractedOperation, Operation } from '../types/operation';
+import type { Category, CreateOperationPayload, ExtractedOperation, Operation, ActivePeriod } from '../types/operation';
 import { API_ENDPOINTS } from '../utils/constants';
 
 export const getAccounts = async (): Promise<Account[]> => {
@@ -20,6 +20,13 @@ export const createAccount = async (data: import('../types/auth').CreateAccountP
 
 export const getCategories = async (): Promise<Category[]> => {
   const response = await apiClient.get<Category[]>(API_ENDPOINTS.CATEGORIES);
+  return response.data;
+};
+
+export const getActivePeriods = async (accountId: number): Promise<ActivePeriod[]> => {
+  const response = await apiClient.get<ActivePeriod[]>(API_ENDPOINTS.OPERATIONS_ACTIVE_PERIODS, {
+    params: { account_id: accountId },
+  });
   return response.data;
 };
 

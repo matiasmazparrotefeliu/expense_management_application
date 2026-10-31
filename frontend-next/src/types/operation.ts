@@ -20,6 +20,10 @@ export interface Category {
   type: OperationType;
   description: string | null;
   is_active: boolean;
+  /** Marks income categories whose operations count as the monthly "salary"
+   * budget (always present in backend payloads; optional in TS so existing
+   * inline fixtures stay valid). */
+  is_budget_source?: boolean;
 }
 
 export interface Operation {
@@ -112,6 +116,12 @@ export const OperationTypeMapper = {
 
 /** All valid input types for forms */
 export const OPERATION_TYPE_INPUTS: OperationTypeInput[] = ['ingreso', 'egreso', 'transferencia'];
+
+/** A fiscal month returned by `GET /operations/active-periods` (1-based month). */
+export interface ActivePeriod {
+  year: number;
+  month: number;
+}
 
 /** Display options for select inputs */
 export const OPERATION_TYPE_OPTIONS = [

@@ -62,6 +62,14 @@ export default function DashboardPage() {
             <Button
               type="button"
               variant="secondary"
+              onClick={() => router.push(ROUTES.REPORTS_MONTHLY)}
+              className="w-auto"
+            >
+              Resumen mensual
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
               onClick={handleLogout}
               className="w-auto"
             >
