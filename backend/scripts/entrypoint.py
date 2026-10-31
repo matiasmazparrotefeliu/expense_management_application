@@ -12,36 +12,43 @@ DEFAULT_CATEGORIES = [
         "name": "Supermercado",
         "type": OperationType.expense,
         "description": "Compras de alimentos, limpieza y artículos de primera necesidad",
+        "is_budget_source": False,
     },
     {
         "name": "Servicios",
         "type": OperationType.expense,
         "description": "Pagos de servicios básicos del hogar (luz, gas, agua, internet, telefonía)",
+        "is_budget_source": False,
     },
     {
         "name": "Suscripciones",
         "type": OperationType.expense,
         "description": "Servicios de streaming, plataformas digitales y membresías periódicas",
+        "is_budget_source": False,
     },
     {
         "name": "Expensas",
         "type": OperationType.expense,
         "description": "Gastos comunes y de mantenimiento del edificio o consorcio",
+        "is_budget_source": False,
     },
     {
         "name": "Alquiler",
         "type": OperationType.expense,
         "description": "Pago mensual del alquiler de la vivienda o inmueble",
+        "is_budget_source": False,
     },
     {
         "name": "Viajes",
         "type": OperationType.expense,
         "description": "Gastos de transporte, pasajes, hospedaje y turismo",
+        "is_budget_source": False,
     },
     {
         "name": "Otros Gastos",
         "type": OperationType.expense,
         "description": "Gastos varios o eventuales que no encajan en otra categoría",
+        "is_budget_source": False,
     },
 
     # --- INGRESOS (INCOME) ---
@@ -49,11 +56,15 @@ DEFAULT_CATEGORIES = [
         "name": "Sueldo",
         "type": OperationType.income,
         "description": "Cobro de salarios, honorarios o ingresos laborales principales",
+        # Marca la categoría como fuente del presupuesto mensual: suma al
+        # "sueldo" que consume el gasto en el resumen mensual.
+        "is_budget_source": True,
     },
     {
         "name": "Otros Ingresos",
         "type": OperationType.income,
         "description": "Ingresos extraordinarios, cobros varios o rendimientos",
+        "is_budget_source": False,
     },
 
     # --- TRANSFERENCIAS (TRANSFER) ---
@@ -61,6 +72,7 @@ DEFAULT_CATEGORIES = [
         "name": "Transferencias",
         "type": OperationType.transfer,
         "description": "Envíos de dinero a personas o cuentas externas",
+        "is_budget_source": False,
     },
 ]
 
@@ -71,7 +83,12 @@ def seed_categories():
     try:
         if db.query(Category).count() == 0:
             db.add_all([
-                Category(name=entry["name"], type=entry["type"], description=entry["description"])
+                Category(
+                    name=entry["name"],
+                    type=entry["type"],
+                    description=entry["description"],
+                    is_budget_source=entry["is_budget_source"],
+                )
                 for entry in DEFAULT_CATEGORIES
             ])
             db.commit()
