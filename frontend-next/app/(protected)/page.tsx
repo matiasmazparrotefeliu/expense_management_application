@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/common/Button/Button';
 import { AccountsPanel } from '@/components/dashboard/AccountsPanel';
 import { OperationsTable } from '@/components/dashboard/OperationsTable';
-import { SavingsBalance } from '@/components/dashboard/SavingsBalance';
 import { useAuth } from '@/hooks/useAuth';
 import { useData } from '@/features/data/DataProvider';
 import { ROUTES } from '@/utils/constants';
@@ -39,9 +38,9 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Panel de Operaciones</h1>
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Panel de Operaciones</h1>
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             <Button
               type="button"
               variant="success"
@@ -54,6 +53,7 @@ export default function DashboardPage() {
             <Button
               type="button"
               variant="primary"
+              size="sm"
               onClick={() => router.push(ROUTES.ACCOUNTS_NEW)}
               className="w-auto"
             >
@@ -62,6 +62,7 @@ export default function DashboardPage() {
             <Button
               type="button"
               variant="secondary"
+              size="sm"
               onClick={() => router.push(ROUTES.REPORTS_MONTHLY)}
               className="w-auto"
             >
@@ -69,7 +70,8 @@ export default function DashboardPage() {
             </Button>
             <Button
               type="button"
-              variant="secondary"
+              variant="ghost"
+              size="sm"
               onClick={handleLogout}
               className="w-auto"
             >
@@ -83,16 +85,14 @@ export default function DashboardPage() {
           onSelectAccount={selectAccount}
           accounts={accounts}
           loading={loading}
+          selectedAccount={selectedAccount}
         />
 
         {accounts.length > 0 && (
-          <>
-            <SavingsBalance account={selectedAccount} />
-            <OperationsTable
-              operations={operations}
-              selectedAccountId={selectedAccountId}
-            />
-          </>
+          <OperationsTable
+            operations={operations}
+            selectedAccountId={selectedAccountId}
+          />
         )}
       </div>
     </div>

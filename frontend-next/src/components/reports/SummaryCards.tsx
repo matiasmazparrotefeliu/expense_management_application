@@ -18,11 +18,11 @@ export const SummaryCards = memo(function SummaryCards({ summary }: SummaryCards
   const inDeficit = summary.net_available < 0;
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 mb-6">
+    <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
         <div>
           <p className="text-sm text-gray-500">Ingresos del mes (sueldo)</p>
-          <p data-testid="total-salary" className="mt-1 text-3xl font-bold text-green-600">
+          <p data-testid="total-salary" className="mt-1 text-2xl sm:text-3xl font-bold text-green-600">
             {formatCurrency(summary.total_salary, summary.currency)}
           </p>
           <p className="mt-1 text-xs text-gray-500">
@@ -31,7 +31,7 @@ export const SummaryCards = memo(function SummaryCards({ summary }: SummaryCards
         </div>
         <div>
           <p className="text-sm text-gray-500">Gastos del mes</p>
-          <p data-testid="total-expenses" className="mt-1 text-3xl font-bold text-red-600">
+          <p data-testid="total-expenses" className="mt-1 text-2xl sm:text-3xl font-bold text-red-600">
             {formatCurrency(summary.total_expenses, summary.currency)}
           </p>
           <p className="mt-1 text-xs text-gray-500">
@@ -42,7 +42,7 @@ export const SummaryCards = memo(function SummaryCards({ summary }: SummaryCards
           <p className="text-sm text-gray-500">Dinero disponible</p>
           <p
             data-testid="net-available"
-            className={`mt-1 text-3xl font-bold ${inDeficit ? 'text-red-600' : 'text-gray-900'}`}
+            className={`mt-1 text-2xl sm:text-3xl font-bold ${inDeficit ? 'text-red-600' : 'text-gray-900'}`}
           >
             {formatCurrency(summary.net_available, summary.currency)}
           </p>

@@ -127,7 +127,7 @@ export const AIExtractionForm = memo(function AIExtractionForm({
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">Nueva operación</h2>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-2">
         <Button
           type="button"
           variant={operationMode === 'ai' ? 'primary' : 'secondary'}
@@ -151,6 +151,9 @@ export const AIExtractionForm = memo(function AIExtractionForm({
           Formulario manual
         </Button>
       </div>
+      <p className="text-xs sm:text-sm text-gray-500 mb-4">
+        Podés describir la operación con tus palabras en Mensaje con IA y los datos se completan solos.
+      </p>
 
       {operationMode === 'ai' ? (
         <div className="space-y-4">
@@ -202,6 +205,11 @@ export const AIExtractionForm = memo(function AIExtractionForm({
           ) : (
             <form onSubmit={handleCreateOperationFromAi}>
               {confirmError && <Alert message={confirmError} />}
+              {/* Review step: visually distinct from the extraction form so the
+                  user knows this data is editable but AI-suggested. */}
+              <p className="mb-4 text-sm font-medium text-gray-700 border-l-4 border-blue-500 pl-2">
+                Revisá los datos extraídos antes de registrar la operación:
+              </p>
               <div className="space-y-4">
                 <AccountSelectField
                   id="ai-preview-account"
