@@ -183,16 +183,21 @@ export default function MonthlyReportView() {
           </Button>
         </div>
 
+        {/* Unified control bar: account + period, every result on the page is
+            scoped to this pair. */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <AccountSelectField
-            id="report-account"
-            accounts={accounts}
-            value={selectedAccountId}
-            onChange={selectAccount}
-          />
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+            <div className="lg:w-72 lg:shrink-0">
+              <AccountSelectField
+                id="report-account"
+                accounts={accounts}
+                value={selectedAccountId}
+                onChange={selectAccount}
+              />
+            </div>
+            <PeriodSelector period={period} periods={periods} onPeriodChange={handlePeriodChange} />
+          </div>
         </div>
-
-        <PeriodSelector period={period} periods={periods} onPeriodChange={handlePeriodChange} />
 
         {error ? (
           <div className="bg-white rounded-lg shadow p-6 text-center text-red-600">{error}</div>

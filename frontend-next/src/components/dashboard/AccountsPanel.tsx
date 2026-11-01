@@ -1,12 +1,15 @@
 import { memo } from 'react';
 import type { Account } from '@/types/auth';
 import { AccountSelectField } from './AccountSelectField';
+import { SavingsBalance } from './SavingsBalance';
 
 interface AccountsPanelProps {
   selectedAccountId: number | null;
   onSelectAccount: (id: number) => void;
   accounts: Account[];
   loading: boolean;
+  /** Account whose balance is summarized inside the card; null hides the block. */
+  selectedAccount: Account | null;
 }
 
 export const AccountsPanel = memo(function AccountsPanel({
@@ -14,6 +17,7 @@ export const AccountsPanel = memo(function AccountsPanel({
   onSelectAccount,
   accounts,
   loading,
+  selectedAccount,
 }: AccountsPanelProps) {
   if (loading) {
     return <div className="flex items-center justify-center py-4">Cargando cuentas...</div>;
@@ -32,13 +36,14 @@ export const AccountsPanel = memo(function AccountsPanel({
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
           <AccountSelectField
             id="account-select"
             accounts={accounts}
             value={selectedAccountId}
             onChange={onSelectAccount}
           />
+          <SavingsBalance account={selectedAccount} />
         </div>
       )}
     </div>
