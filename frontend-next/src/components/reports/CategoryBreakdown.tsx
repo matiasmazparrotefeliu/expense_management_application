@@ -14,16 +14,6 @@ function isOverLimit(category: CategoryExpenseItem): boolean {
   return !!category.limit && category.limit.percentage >= 100;
 }
 
-/** Mobile-only label for a stacked card cell (column headers are hidden below
- * `sm`, so every field names itself before its value). */
-const CellLabel = memo(function CellLabel({ text }: { text: string }) {
-  return (
-    <span className="text-xs uppercase tracking-wide text-gray-400 whitespace-nowrap sm:hidden">
-      {text}
-    </span>
-  );
-});
-
 interface CategoryLimitCellProps {
   category: CategoryExpenseItem;
   onSaveCategoryLimit: (categoryId: number, amount: number) => Promise<void>;
@@ -133,16 +123,16 @@ const CategoryLimitCell = memo(function CategoryLimitCell({
 /** Per-category monthly spend table (RF-04): category, total amount, operation
  * count, share of the month's spend and the optional cap with its own progress
  * bar (semáforo). Rows arrive ordered by amount desc from the backend.
- * Desktop (`sm+`) keeps the table; below `sm` each row stacks into a card —
- * one DOM, the columns transform instead of rendering two lists. */
+ * One DOM, two layouts: on `sm+` the classic table; below `sm` each `<tr>` is a
+ * transaction card (2-column grid — category + % on the top line, amount +
+ * operation count on the second — with the limit editor growing the full width)
+ * mirroring the OperationsTable cards; no repeated labels, the grid placement
+ * classes fix the visual order and the `<td>` order matches the `<thead>`. */
 export const CategoryBreakdown = memo(function CategoryBreakdown({
   categories,
   onSaveCategoryLimit,
   onRemoveCategoryLimit,
 }: CategoryBreakdownProps) {
-  const statCell =
-    'flex items-center justify-between gap-3 sm:table-cell sm:px-6 sm:py-3';
-
   return (
     <div className="bg-white rounded-lg shadow overflow-x-auto">
       <div className="p-4 sm:p-6 pb-0">
@@ -167,30 +157,39 @@ export const CategoryBreakdown = memo(function CategoryBreakdown({
             return (
               <tr
                 key={category.category_id}
-                className={`flex flex-col gap-1.5 px-4 py-3 sm:table-row sm:px-0 sm:py-0 border-b border-gray-100 transition-colors ${
+                className={`grid grid-cols-[1fr_auto] gap-y-1 gap-x-3 px-4 py-3 sm:table-row sm:gap-0 sm:px-0 sm:py-0 border-b border-gray-100 transition-colors ${
                   overLimit ? 'bg-red-50' : ''
                 }`}
                 data-testid="category-row"
               >
-                <td className="sm:px-6 sm:py-3">
+                {/* Top line: category (title, breathing the width) + its share
+                    of the month's spend on the right. The `<td>` DOM order
+                    matches the `<thead>` (Categoría, Gasto, Operaciones,
+                    % del gasto, Límite); the grid classes fix the mobile cards. */}
+                <td className="col-start-1 row-start-1 min-w-0 sm:table-cell sm:px-6 sm:py-3">
                   <span className="text-sm font-semibold text-gray-900">
                     {category.category_name}
                   </span>
                 </td>
-                <td className={statCell}>
-                  <CellLabel text="Gasto" />
-                  <span className="text-red-600">{formatNumber(category.amount)}</span>
+
+                {/* Second line: highlighted spend + operation count. The "ops"
+                    suffix is mobile-only; the desktop column shows the plain
+                    number under its header. */}
+                <td className="col-start-1 row-start-2 whitespace-nowrap text-sm font-semibold text-red-600 sm:table-cell sm:px-6 sm:py-3 sm:font-normal">
+                  {formatNumber(category.amount)}
                 </td>
-                <td className={statCell}>
-                  <CellLabel text="Operaciones" />
-                  <span>{category.count}</span>
+                <td className="col-start-2 row-start-2 justify-self-end whitespace-nowrap text-xs text-gray-500 sm:table-cell sm:justify-self-auto sm:text-sm sm:px-6 sm:py-3">
+                  {category.count}
+                  <span className="sm:hidden"> ops</span>
                 </td>
-                <td className={statCell}>
-                  <CellLabel text="% del gasto" />
-                  <span>{category.percentage}%</span>
+
+                {/* Top-right of the card: share of the spend (small gray). */}
+                <td className="col-start-2 row-start-1 justify-self-end text-sm text-gray-500 sm:table-cell sm:justify-self-auto sm:px-6 sm:py-3">
+                  {category.percentage}%
                 </td>
-                <td className="flex flex-col gap-1.5 sm:table-cell sm:px-6 sm:py-3">
-                  <CellLabel text="Límite" />
+
+                {/* Limit editor grows the full card width below `sm`. */}
+                <td className="col-span-2 col-start-1 row-start-3 sm:table-cell sm:col-span-auto sm:row-start-auto sm:px-6 sm:py-3">
                   <CategoryLimitCell
                     category={category}
                     onSaveCategoryLimit={onSaveCategoryLimit}
