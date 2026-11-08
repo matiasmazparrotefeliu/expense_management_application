@@ -184,8 +184,9 @@ export default function MonthlyReportView() {
         </div>
 
         {/* Unified control bar: account + period, every result on the page is
-            scoped to this pair. */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
+            scoped to this pair. Vertical stack below `lg`, single aligned line
+            on wide screens. */}
+        <div className="bg-white rounded-lg shadow p-4 sm:px-6 sm:py-5 mb-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
             <div className="lg:w-72 lg:shrink-0">
               <AccountSelectField
