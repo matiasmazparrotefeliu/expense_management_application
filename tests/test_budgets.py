@@ -239,6 +239,31 @@ def test_summary_reports_period_totals_and_category_breakdown(client, account):
     assert transfer_row["percentage"] == 37.5
 
 
+def test_summary_neutral_consumption_without_salary_income(client, account):
+    """Regression guard for the zero-salary path: debits recorded but no
+    `is_budget_source` income must keep `consumption_percentage` as `null`
+    (never a ZeroDivisionError or NaN/Infinity) while the per-category
+    percentages still divide by the actual total expenses."""
+    post_operation(client, account, op_type="ingreso", category_id=account["category_income_id"], amount=100, concept="Intereses banco")
+    post_operation(client, account, op_type="egreso", category_id=account["category_id"], amount=250, concept="Compra super")
+    post_operation(client, account, op_type="transfer", category_id=account["category_transfer_id"], amount=150, concept="Pago venta")
+
+    response = client.get(f"/budgets/summary?account_id={account['id']}&year={YEAR}&month={MONTH}", headers=account["headers"])
+    assert response.status_code == 200
+    summary = response.json()
+
+    assert summary["total_salary"] == 0.0
+    assert summary["total_income"] == 100.0
+    assert summary["total_expenses"] == 400.0
+    assert summary["net_available"] == -400.0
+    assert summary["consumption_percentage"] is None
+    assert summary["global_limit"] is None
+
+    by_category = {row["category_id"]: row for row in summary["categories"]}
+    assert by_category[account["category_id"]]["percentage"] == 62.5
+    assert by_category[account["category_transfer_id"]]["percentage"] == 37.5
+
+
 def test_summary_reports_progress_of_configured_limits(client, account):
     """Global and per-category caps come back with their usage: global counts
     every debit, category caps only that category's operations."""
